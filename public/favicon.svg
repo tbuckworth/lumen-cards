@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Lumen">
+  <rect width="64" height="64" rx="18" fill="#292722"/>
+  <circle cx="32" cy="32" r="11" fill="#e9bd66"/>
+  <g stroke="#e9bd66" stroke-width="2.5" stroke-linecap="round">
+    <path d="M32 10v7M32 47v7M10 32h7M47 32h7M16.4 16.4l5 5M42.6 42.6l5 5M47.6 16.4l-5 5M21.4 42.6l-5 5"/>
+  </g>
+</svg>
