@@ -98,3 +98,17 @@ test('has no automatically detectable accessibility violations', async ({ page }
   scan = await new AxeBuilder({ page }).analyze()
   expect(scan.violations).toEqual([])
 })
+
+test('a rapid double rating writes one review and undo permits rating again', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: /Begin with three sample cards/ }).click()
+  await page.getByRole('button', { name: 'Begin', exact: true }).click()
+  await page.getByRole('button', { name: 'Show answer' }).click()
+  await page.locator('.rating--good').evaluate((button: HTMLButtonElement) => { button.click(); button.click() })
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1')
+  await page.getByRole('button', { name: 'Undo last answer' }).click()
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+  await page.getByRole('button', { name: /Easy/ }).click()
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1')
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})

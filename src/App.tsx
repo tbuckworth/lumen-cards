@@ -40,7 +40,13 @@ export default function App() {
     })
     const onHash = () => setRoute(routeFromHash())
     window.addEventListener('hashchange', onHash)
+    let registration: ServiceWorkerRegistration | undefined
+    const checkUpdate = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) void registration?.update().catch(() => {})
+    }
+    document.addEventListener('visibilitychange', checkUpdate)
     const updateSW = registerSW({
+      onRegisteredSW: (_url, value) => { registration = value; checkUpdate() },
       onOfflineReady: () => notify('Lumen is ready offline.'),
       onNeedRefresh: () => {
         setUpdateAction(() => () => {
@@ -51,7 +57,7 @@ export default function App() {
       },
       onRegisterError: () => notify('Offline setup could not finish. Lumen still works while connected.')
     })
-    return () => window.removeEventListener('hashchange', onHash)
+    return () => { window.removeEventListener('hashchange', onHash); document.removeEventListener('visibilitychange', checkUpdate) }
   }, [notify])
 
   const navigate = useCallback((next: Route) => {
@@ -92,8 +98,8 @@ export default function App() {
         {route === 'review' && <ReviewPage deckId={reviewDeckId} onClose={() => navigate('home')} />}
       </main>
       <BottomNav route={route} onNavigate={navigate} />
-      <div className={`toast ${toast ? 'is-visible' : ''}`} role="status" aria-live="polite">
-        <span>{toast}</span>
+      <div className={`toast ${toast || updateAction ? 'is-visible' : ''}`} role="status" aria-live="polite">
+        <span>{toast || (updateAction ? 'An update is ready.' : '')}</span>
         {updateAction && <button type="button" onClick={updateAction}>Update now</button>}
       </div>
     </div>

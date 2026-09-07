@@ -24,7 +24,13 @@ export interface StoredFsrsCard {
   last_review?: string
 }
 
+export interface StoredImage { type: string; data: ArrayBuffer }
+export type CardImageData = Blob | StoredImage
+
 export interface CardRecord {
+  frontImage?: CardImageData
+  backImage?: CardImageData
+  contentKey?: string
   id: string
   deckId: string
   front: string
@@ -57,6 +63,8 @@ export interface SettingRecord {
 }
 
 export interface LumenContentCard {
+  frontImage?: string
+  backImage?: string
   id?: string
   front: string
   back: string

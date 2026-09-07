@@ -1,3 +1,5 @@
+import { CardImage } from '../components/CardImage'
+import { storageError } from '../lib/images'
 import { ArrowLeft, Check, RotateCcw, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Rating, State, type Grade } from 'ts-fsrs'
@@ -13,6 +15,7 @@ interface SessionResult {
   rating: Grade
   reviewId: string
   previousCard: CardRecord
+  savedAt: string
 }
 
 export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () => void }) {
@@ -22,6 +25,8 @@ export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () =
   const [results, setResults] = useState<SessionResult[]>([])
   const [retention, setRetention] = useState(0.9)
   const shownAt = useRef(Date.now())
+  const saving = useRef(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     async function loadQueue() {
@@ -35,7 +40,7 @@ export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () =
       setQueue(selectStudyQueue(allCards, todaysReviews, dailyNewCards))
       shownAt.current = Date.now()
     }
-    void loadQueue()
+    void loadQueue().catch((error) => setError(storageError(error)))
   }, [deckId])
 
   const current = queue?.[index]
@@ -45,50 +50,67 @@ export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () =
   )
 
   const rate = useCallback(async (rating: Grade) => {
-    if (!current || !revealed) return
-    const now = new Date()
-    const result = scheduleReview(current, rating, now, retention)
-    const stored = serializeFsrsCard(result.card)
-    const reviewId = makeReviewId()
-    await db.transaction('rw', db.cards, db.reviews, async () => {
-      await db.cards.update(current.id, {
-        fsrs: stored,
-        due: stored.due,
-        updatedAt: now.toISOString()
+    if (!current || !revealed || saving.current) return
+    saving.current = true
+    setError('')
+    try {
+      const now = new Date()
+      const result = scheduleReview(current, rating, now, retention)
+      const stored = serializeFsrsCard(result.card)
+      const reviewId = makeReviewId()
+      await db.transaction('rw', db.cards, db.reviews, async () => {
+        const latest = await db.cards.get(current.id)
+        if (!latest || latest.updatedAt !== current.updatedAt) throw new Error('This card changed in another window. End this review and start again to load the latest version.')
+        await db.cards.update(current.id, {
+          fsrs: stored,
+          due: stored.due,
+          updatedAt: now.toISOString()
+        })
+        await db.reviews.add({
+          id: reviewId,
+          cardId: current.id,
+          deckId: current.deckId,
+          rating,
+          state: result.log.state,
+          reviewedAt: now.toISOString(),
+          durationMs: Math.max(0, Date.now() - shownAt.current),
+          scheduledDays: result.log.scheduled_days,
+          elapsedDays: result.log.elapsed_days
+        })
       })
-      await db.reviews.add({
-        id: reviewId,
-        cardId: current.id,
-        deckId: current.deckId,
-        rating,
-        state: result.log.state,
-        reviewedAt: now.toISOString(),
-        durationMs: Math.max(0, Date.now() - shownAt.current),
-        scheduledDays: result.log.scheduled_days,
-        elapsedDays: result.log.elapsed_days
-      })
-    })
-    setResults((items) => [...items, { cardId: current.id, rating, reviewId, previousCard: current }])
-    setIndex((value) => value + 1)
-    setRevealed(false)
-    shownAt.current = Date.now()
+      setResults((items) => [...items, { cardId: current.id, rating, reviewId, previousCard: current, savedAt: now.toISOString() }])
+      setIndex((value) => value + 1)
+      setRevealed(false)
+      shownAt.current = Date.now()
+    } catch (error) { setError(storageError(error)) }
+    finally { saving.current = false }
   }, [current, retention, revealed])
 
   const undoLast = useCallback(async () => {
     const previous = results.at(-1)
-    if (!previous) return
-    await db.transaction('rw', db.cards, db.reviews, async () => {
-      await db.cards.put(previous.previousCard)
-      await db.reviews.delete(previous.reviewId)
-    })
-    setResults((items) => items.slice(0, -1))
-    setIndex((value) => Math.max(0, value - 1))
-    setRevealed(true)
-    shownAt.current = Date.now()
+    if (!previous || saving.current) return
+    saving.current = true
+    setError('')
+    try {
+      await db.transaction('rw', db.cards, db.reviews, async () => {
+        const latest = await db.cards.get(previous.cardId)
+        if (!latest || latest.updatedAt !== previous.savedAt || !await db.reviews.get(previous.reviewId)) throw new Error('This card or review was changed elsewhere. End this review and start again.')
+        await db.cards.put({ ...latest, fsrs: previous.previousCard.fsrs, due: previous.previousCard.due, updatedAt: new Date().toISOString() })
+        await db.reviews.delete(previous.reviewId)
+      })
+      const restored = await db.cards.get(previous.cardId)
+      if (restored) setQueue((cards) => cards?.map((card) => card.id === restored.id ? restored : card) ?? null)
+      setResults((items) => items.slice(0, -1))
+      setIndex((value) => Math.max(0, value - 1))
+      setRevealed(true)
+      shownAt.current = Date.now()
+    } catch (error) { setError(storageError(error)) }
+    finally { saving.current = false }
   }, [results])
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
+      if (event.repeat || document.querySelector('[role=dialog]') || (event.target instanceof HTMLElement && event.target.matches('button, input, textarea, select'))) return
       if (event.key === 'Escape') onClose()
       if ((event.key === ' ' || event.key === 'Enter') && current && !revealed) {
         event.preventDefault()
@@ -102,6 +124,8 @@ export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () =
     return () => window.removeEventListener('keydown', handleKey)
   }, [current, onClose, rate, revealed])
 
+  if (!queue && error) return <div className="review-shell"><p role="alert">{error}</p><button className="button" onClick={onClose}>Return home</button></div>
+
   if (!queue) {
     return <div className="review-shell"><div className="loading-orb" aria-label="Preparing your cards" /></div>
   }
@@ -111,6 +135,7 @@ export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () =
     const remembered = results.length - again
     return (
       <div className="review-shell review-complete">
+        {error && <p role="alert">{error}</p>}
         <div className="review-complete__mark"><Check size={32} /></div>
         <p className="eyebrow">Session complete</p>
         <h1>{results.length ? 'Well remembered.' : 'Nothing due just now.'}</h1>
@@ -143,15 +168,18 @@ export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () =
         ) : <span className="review-count">{index + 1}/{queue.length}</span>}
       </header>
 
+      {error && <p role="alert">{error}</p>}
       <section className={`review-card ${revealed ? 'is-revealed' : ''}`} aria-live="polite">
         <p className="eyebrow">{current.fsrs.state === State.New ? 'New card' : 'Recall'}</p>
         <section className="review-card__front">
-          <h1>{current.front}</h1>
+          <h1>{current.front || 'Identify the image'}</h1>
+          <CardImage key={`${current.id}-front`} image={current.frontImage} side="Front" />
         </section>
         {revealed && (
           <section className="review-card__answer">
             <span className="answer-rule" />
             <p>{current.back}</p>
+            <CardImage key={`${current.id}-back`} image={current.backImage} side="Back" />
             {current.notes && <aside><strong>Note</strong>{current.notes}</aside>}
             {current.source && <small>Source: {current.source}</small>}
           </section>

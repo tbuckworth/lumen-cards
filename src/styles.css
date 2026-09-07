@@ -522,3 +522,18 @@ h1, h2 { font-family: var(--serif); font-weight: 500; letter-spacing: -0.025em; 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+.card-image-button { display: block; max-width: 100%; margin: 18px auto; padding: 0; border: 0; background: transparent; color: var(--ink-soft); }
+.card-image { display: block; max-width: 100%; max-height: 48dvh; margin: auto; object-fit: contain; border-radius: 10px; }
+.card-image-button > span { display: block; margin-top: 6px; font-size: .75rem; }
+.card-image-button--thumbnail { margin: 8px 0; }
+.card-image-button--thumbnail .card-image { max-width: 140px; max-height: 120px; }
+.image-field { padding: 12px; border: 1px solid var(--line); border-radius: 14px; }
+.image-field small { display: block; margin-top: 6px; color: var(--ink-soft); font-size: .75rem; }
+.image-field input { max-width: 100%; }
+.modal--wide { width: min(100%, 1000px); }
+.image-detail { overflow: auto; max-height: 65dvh; }
+.image-detail img { display: block; max-width: none; }
+.form-error { padding: 14px; border: 1px solid #a54940; border-radius: 12px; }
+.library-card > div { min-width: 0; }
+.library-card p, .library-card span { overflow-wrap: anywhere; }
