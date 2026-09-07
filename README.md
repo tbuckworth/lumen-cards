@@ -16,6 +16,8 @@ There is no App Store purchase, developer account, login, API key, or subscripti
 
 - Schedules reviews with [FSRS](https://github.com/open-spaced-repetition/ts-fsrs), with adjustable desired retention and daily new-card limits.
 - Creates, edits, pauses, deletes, searches, and studies cards in separate decks.
+- Displays embedded PNG, JPEG and WebP images on either side, including image-only cards, with tap-to-enlarge viewing.
+- Keeps repeated prompts with different images distinct and preserves images in deck exports and full backups. See the [image-deck guide](docs/image-decks.md).
 - Imports Lumen JSON, Claude's compact JSON shape, CSV, TSV, and Anki **Notes in Plain Text** exports.
 - Exports Lumen decks or Anki-compatible UTF-8 tab-separated text.
 - Saves a complete backup containing decks, cards, FSRS state, and review history.
@@ -46,7 +48,7 @@ There is no analytics, advertising, remote database, account system, or applicat
 - No automatic cross-device sync. That would require accounts and a maintained backend, which conflicts with the free, zero-maintenance first version.
 - No server-driven reminders. iPhone web push requires a push service; opening Lumen shows everything due.
 - No direct `.apkg` parser. In Anki, export **Notes in Plain Text**, then import the resulting `.txt` file into Lumen. Lumen can export the same documented text format back to Anki.
-- Images and audio are not yet embedded in deck files.
+- Audio and direct HEIC/SVG/GIF imports are not supported. Images use embedded PNG, JPEG or WebP in Lumen JSON; Anki text export cannot carry these images.
 
 ## Development
 
@@ -67,7 +69,7 @@ npm run test:e2e
 
 The Playwright suite covers emulated iPhone WebKit, mobile Chromium, and desktop Chromium. It tests onboarding, FSRS review, persistence, Claude deck import, the PWA manifest, offline reload in browsers whose automation layer supports it, and automated accessibility checks.
 
-Pushes to `main` run the same tests and deploy `dist/` to GitHub Pages only after they pass.
+Pull requests and pushes to `main` run the same tests; pushes to `main` build a downloadable release artifact and deploy `dist/` to GitHub Pages only after they pass.
 
 ## Design notes
 

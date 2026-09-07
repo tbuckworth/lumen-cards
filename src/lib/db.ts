@@ -1,8 +1,10 @@
+import { contentKey, storeImage } from './images'
 import Dexie, { type EntityTable } from 'dexie'
 import { createEmptyCard } from 'ts-fsrs'
 import {
   DEFAULT_SETTINGS,
   type CardRecord,
+  type CardImageData,
   type DeckRecord,
   type ReviewRecord,
   type SettingRecord
@@ -63,8 +65,12 @@ export async function createCard(
   deckId: string,
   front: string,
   back: string,
-  options: { notes?: string; tags?: string[]; source?: string; id?: string } = {}
+  options: { notes?: string; tags?: string[]; source?: string; id?: string; frontImage?: CardImageData; backImage?: CardImageData; contentKey?: string } = {}
 ): Promise<CardRecord> {
+  if ((!front.trim() && !options.frontImage) || (!back.trim() && !options.backImage)) throw new Error('Each side needs text or an image.')
+  const key = options.contentKey ?? await contentKey(front, options.frontImage, options.backImage)
+  const frontImage = options.frontImage instanceof Blob ? await storeImage(options.frontImage) : options.frontImage
+  const backImage = options.backImage instanceof Blob ? await storeImage(options.backImage) : options.backImage
   const now = new Date()
   const fsrs = serializeFsrsCard(createEmptyCard(now))
   const card: CardRecord = {
@@ -72,6 +78,9 @@ export async function createCard(
     deckId,
     front: front.trim(),
     back: back.trim(),
+    frontImage,
+    backImage,
+    contentKey: key,
     notes: options.notes?.trim() ?? '',
     tags: options.tags?.map((tag) => tag.trim().toLowerCase()).filter(Boolean) ?? [],
     source: options.source?.trim() || undefined,

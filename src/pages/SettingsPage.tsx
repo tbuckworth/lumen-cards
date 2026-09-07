@@ -1,5 +1,6 @@
 import { ArchiveRestore, Brain, CloudOff, Database, Download, HardDrive, Share2, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { storageError } from '../lib/images'
 import { InstallGuide } from '../components/InstallGuide'
 import { getSetting, resetDatabase, setSetting } from '../lib/db'
 import { downloadText, makeBackup, makeLearningReport, restoreBackup, shareTextFile } from '../lib/importExport'
@@ -47,19 +48,22 @@ export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () 
   }
 
   async function backup() {
-    const contents = await makeBackup()
-    downloadText(contents, `lumen-backup-${new Date().toISOString().slice(0, 10)}.json`)
-    setLastBackup(new Date().toISOString())
-    notify('Backup saved. Keep it in iCloud Drive.')
+    try {
+      const contents = await makeBackup()
+      downloadText(contents, `lumen-backup-${new Date().toISOString().slice(0, 10)}.json`)
+      setLastBackup(new Date().toISOString())
+      notify('Backup downloaded. Keep it in iCloud Drive.')
+    } catch (error) { notify(storageError(error)) }
   }
 
   async function restore(file?: File) {
     if (!file) return
+    if (!window.confirm('Restore this backup? Matching cards and their review schedules will be replaced. Save a full backup first if you want to keep the current versions.')) return
     try {
       const result = await restoreBackup(await file.text())
       notify(`Restored ${result.cardsAdded} cards.`)
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'That backup could not be restored.')
+      notify(storageError(error))
     }
   }
 
@@ -103,8 +107,8 @@ export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () 
           <Download size={18} /><span><strong>Save a full backup</strong><small>{lastBackup ? `Last saved ${new Date(lastBackup).toLocaleDateString()}` : 'Recommended before changing phones'}</small></span><span>›</span>
         </button>
         <label className="settings-row settings-row--file">
-          <ArchiveRestore size={18} /><span><strong>Restore a backup</strong><small>Merges with your current library</small></span><span>›</span>
-          <input type="file" accept=".json,application/json" onChange={(event) => restore(event.target.files?.[0])} />
+          <ArchiveRestore size={18} /><span><strong>Restore a backup</strong><small>Restores matching cards and schedules; keeps other cards</small></span><span>›</span>
+          <input type="file" accept=".json,application/json" onChange={(event) => { void restore(event.target.files?.[0]); event.target.value = '' }} />
         </label>
         <button className="settings-row" type="button" onClick={shareWithClaude}>
           <Share2 size={18} /><span><strong>Share progress with Claude</strong><small>Missed cards and review history</small></span><span>›</span>
@@ -125,7 +129,7 @@ export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () 
         </button>
       </section>
 
-      <footer className="app-footer"><span className="mini-sun" /> Lumen 1.0 · FSRS scheduling · made to last</footer>
+      <footer className="app-footer"><span className="mini-sun" /> Lumen 1.1 · FSRS scheduling · made to last</footer>
     </div>
   )
 }
