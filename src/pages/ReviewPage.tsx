@@ -7,7 +7,7 @@ import { db, getSetting } from '../lib/db'
 import { startOfLocalDay } from '../lib/dates'
 import { makeReviewId } from '../lib/importExport'
 import { formatInterval, previewRatings, RATINGS, RATING_LABELS, scheduleReview, serializeFsrsCard } from '../lib/scheduler'
-import { selectStudyQueue } from '../lib/studyQueue'
+import { selectStudyQueue, type StudyMode } from '../lib/studyQueue'
 import type { CardRecord } from '../types'
 
 interface SessionResult {
@@ -18,7 +18,7 @@ interface SessionResult {
   savedAt: string
 }
 
-export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () => void }) {
+export function ReviewPage({ deckId, mode = 'due', onClose }: { deckId?: string; mode?: StudyMode; onClose: () => void }) {
   const [queue, setQueue] = useState<CardRecord[] | null>(null)
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -37,11 +37,12 @@ export function ReviewPage({ deckId, onClose }: { deckId?: string; onClose: () =
         db.reviews.where('reviewedAt').aboveOrEqual(startOfLocalDay().toISOString()).toArray()
       ])
       setRetention(desiredRetention)
-      setQueue(selectStudyQueue(allCards, todaysReviews, dailyNewCards))
+      const reviews = deckId ? todaysReviews.filter((review) => review.deckId === deckId) : todaysReviews
+      setQueue(selectStudyQueue(allCards, reviews, dailyNewCards, new Date(), mode))
       shownAt.current = Date.now()
     }
     void loadQueue().catch((error) => setError(storageError(error)))
-  }, [deckId])
+  }, [deckId, mode])
 
   const current = queue?.[index]
   const previews = useMemo(

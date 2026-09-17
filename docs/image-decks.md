@@ -1,10 +1,10 @@
-# Image decks in Lumen 1.1
+# Image decks in Lumen
 
-Open [Lumen](https://tbuckworth.github.io/lumen-cards/), accept **Update now** if offered, and check that Settings says **Lumen 1.1**. Keep your existing installation and browser data. Updating does not reset your cards.
+Open [Lumen](https://tbuckworth.github.io/lumen-cards/), accept **Update now** if offered, and check that Settings says **Lumen 1.2**. Keep your existing installation and browser data. Updating does not reset your cards.
 
 ## For botanical identification
 
-Use **Add → Import → Choose a deck file** to import the original 23-card deck again after its images have been embedded in the format below. Repeating “Identify this plant” is supported: different images remain different cards. The normal daily limit is 20 new cards, so a 23-card deck can correctly show only 20 due today; Settings lets you change that limit.
+Use **Add → Import → Choose a deck file** to import the original 23-card deck again after its images have been embedded in the format below. Repeating “Identify this plant” is supported: different images remain different cards. The normal daily allowance is 20 new cards **per deck**, so a 23-card deck can show 20 due today without affecting other decks. Settings lets you change that allowance. Once nothing is due, **Study ahead** on the deck or Today page lets you study the remaining unseen cards. They are graded and scheduled normally; your daily setting stays the same.
 
 If an earlier import already collapsed the deck, Lumen cannot reconstruct the lost cards from that single saved card. Re-export from the original source, keeping all 23 images and distinct card IDs. Save a full backup first. Import the corrected file as a new deck (with a new deck ID and distinct card IDs) to keep the old attempt separate until you have checked the new deck.
 

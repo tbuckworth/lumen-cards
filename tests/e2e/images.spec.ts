@@ -24,6 +24,7 @@ async function importPack(page: Page, pack: unknown) {
 }
 
 test('23 image prompts survive reimport, review, undo, export, backup restore and offline reload', async ({ page, context, browserName }) => {
+  test.setTimeout(60_000)
   await page.goto('./')
   await page.getByRole('button', { name: 'Start with an empty library' }).click()
   const plates = await images(page)
@@ -82,6 +83,19 @@ test('23 image prompts survive reimport, review, undo, export, backup restore an
   await expect.poll(() => page.locator('.library-card img').evaluateAll((imgs) => imgs.length === 46 && imgs.every((img) => (img as HTMLImageElement).naturalWidth === 600))).toBe(true)
   await page.getByRole('button', { name: 'Study 20 due' }).click()
   await expect(page.getByRole('img', { name: 'Front image', exact: true })).toBeVisible()
+  for (let i = 0; i < 20; i++) {
+    await page.getByRole('button', { name: 'Show answer' }).click()
+    await page.getByRole('button', { name: /Easy/ }).click()
+  }
+  await page.getByRole('button', { name: 'Return home' }).click()
+  await expect(page.getByText('All caught up')).toBeVisible()
+  await page.getByRole('button', { name: 'Study ahead' }).click()
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '3')
+  await expect(page.getByRole('img', { name: 'Front image', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Show answer' }).click()
+  await expect(page.getByRole('img', { name: 'Back image', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /Easy/ }).click()
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1')
 })
 
 test('creates and edits image-only cards and rejects corrupt or tracking images without importing anything', async ({ page }) => {

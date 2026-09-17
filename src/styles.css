@@ -208,7 +208,8 @@ h1, h2 { font-family: var(--serif); font-weight: 500; letter-spacing: -0.025em; 
 .today-card__copy { position: relative; z-index: 1; }
 .today-card__copy h2 { margin-bottom: 5px; font-size: 1.52rem; line-height: 1.1; }
 .today-card__copy p:last-child { margin-bottom: 0; color: var(--ink-soft); font-size: 0.84rem; }
-.today-card__button { grid-column: 1 / -1; width: 100%; }
+.today-card__actions { position: relative; z-index: 1; grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.today-card__button { width: 100%; }
 .checkmark { margin-right: 5px; }
 
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 16px 0 40px; }
@@ -344,6 +345,7 @@ h1, h2 { font-family: var(--serif); font-weight: 500; letter-spacing: -0.025em; 
 .deck-hero h1 { position: relative; max-width: 90%; margin-bottom: 7px; font-size: clamp(2.3rem, 10vw, 3.5rem); line-height: 0.98; }
 .deck-hero p:not(.eyebrow) { position: relative; max-width: 36rem; color: rgba(255,250,242,0.72); line-height: 1.45; }
 .deck-hero .button { position: relative; margin-top: 8px; background: #fff8eb; color: var(--ink); }
+.deck-hero .study-ahead { position: relative; margin-top: 4px; color: #fff8eb; }
 .search-field { min-height: 52px; display: flex; align-items: center; gap: 10px; margin: 18px 0; padding: 0 15px; border: 1px solid var(--line); border-radius: 16px; color: var(--ink-soft); background: rgba(255,255,255,0.28); }
 .search-field input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; }
 .library-card { display: flex; align-items: start; gap: 14px; padding: 17px 12px 17px 18px; border: 1px solid var(--line); border-radius: 18px; background: rgba(251,248,241,0.56); }
@@ -504,7 +506,7 @@ h1, h2 { font-family: var(--serif); font-weight: 500; letter-spacing: -0.025em; 
   .deck-strip { grid-auto-columns: 220px; }
   .today-card { grid-template-columns: 100px 1fr auto; padding: 29px; }
   .progress-ring { width: 96px; height: 96px; }
-  .today-card__button { grid-column: auto; width: auto; }
+  .today-card__actions { grid-column: auto; }
   .modal-shell { align-items: center; padding: 30px; }
   .modal { border-radius: 27px; padding: 23px 27px 28px; }
   .floating-add { bottom: 45px; right: max(45px, calc((100vw - 1120px) / 2 + 45px)); }

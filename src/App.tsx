@@ -4,6 +4,7 @@ import { BottomNav } from './components/BottomNav'
 import { Logo } from './components/Logo'
 import { Onboarding } from './components/Onboarding'
 import { getSetting, seedSampleDeck, setSetting } from './lib/db'
+import type { StudyMode } from './lib/studyQueue'
 import { AddPage } from './pages/AddPage'
 import { DecksPage } from './pages/DecksPage'
 import { HomePage } from './pages/HomePage'
@@ -23,6 +24,7 @@ export default function App() {
   const [ready, setReady] = useState(false)
   const [onboardingComplete, setOnboardingComplete] = useState(true)
   const [reviewDeckId, setReviewDeckId] = useState<string | undefined>()
+  const [reviewMode, setReviewMode] = useState<StudyMode>('due')
   const [toast, setToast] = useState('')
   const [updateAction, setUpdateAction] = useState<(() => void) | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
@@ -67,8 +69,9 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  const startReview = useCallback((deckId?: string) => {
+  const startReview = useCallback((deckId?: string, mode: StudyMode = 'due') => {
     setReviewDeckId(deckId)
+    setReviewMode(mode)
     setRoute('review')
   }, [])
 
@@ -95,7 +98,7 @@ export default function App() {
         {route === 'decks' && <DecksPage navigate={navigate} startReview={startReview} notify={notify} />}
         {route === 'add' && <AddPage navigate={navigate} notify={notify} />}
         {route === 'settings' && <SettingsPage notify={notify} onReset={resetOnboarding} />}
-        {route === 'review' && <ReviewPage deckId={reviewDeckId} onClose={() => navigate('home')} />}
+        {route === 'review' && <ReviewPage deckId={reviewDeckId} mode={reviewMode} onClose={() => navigate('home')} />}
       </main>
       <BottomNav route={route} onNavigate={navigate} />
       <div className={`toast ${toast || updateAction ? 'is-visible' : ''}`} role="status" aria-live="polite">

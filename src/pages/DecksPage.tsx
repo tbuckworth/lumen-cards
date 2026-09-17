@@ -9,7 +9,7 @@ import { db, deleteDeck } from '../lib/db'
 import { getSetting } from '../lib/db'
 import { downloadText, makeAnkiTsv, makeDeckPack, makeLearningReport, safeFilename, shareTextFile } from '../lib/importExport'
 import { startOfLocalDay } from '../lib/dates'
-import { selectStudyQueue } from '../lib/studyQueue'
+import { hasNewCards, selectStudyQueue, type StudyMode } from '../lib/studyQueue'
 import type { CardRecord, DeckRecord, Route } from '../types'
 
 type Notice = (message: string) => void
@@ -20,7 +20,7 @@ export function DecksPage({
   notify
 }: {
   navigate: (route: Route) => void
-  startReview: (deckId?: string) => void
+  startReview: (deckId?: string, mode?: StudyMode) => void
   notify: Notice
 }) {
   const data = useLiveQuery(async () => ({
@@ -44,7 +44,8 @@ export function DecksPage({
 
   if (selectedDeck) {
     const allDeckCards = data.cards.filter((card) => card.deckId === selectedDeck.id)
-    const due = selectStudyQueue(allDeckCards, data.todaysReviews, data.dailyNewCards).length
+    const deckReviews = data.todaysReviews.filter((review) => review.deckId === selectedDeck.id)
+    const due = selectStudyQueue(allDeckCards, deckReviews, data.dailyNewCards).length
     return (
       <div className="page">
         <header className="page-header deck-detail-header">
@@ -64,6 +65,11 @@ export function DecksPage({
           <button className="button button--ink" type="button" disabled={!due} onClick={() => startReview(selectedDeck.id)}>
             {due ? `Study ${due} due` : 'Nothing due'}
           </button>
+          {!due && hasNewCards(allDeckCards) && (
+            <button className="text-button study-ahead" type="button" onClick={() => startReview(selectedDeck.id, 'ahead')}>
+              Study ahead
+            </button>
+          )}
         </section>
 
         <label className="search-field">
@@ -111,7 +117,8 @@ export function DecksPage({
       <div className="deck-list">
         {data.decks.map((deck) => {
           const cards = data.cards.filter((card) => card.deckId === deck.id)
-          const due = selectStudyQueue(cards, data.todaysReviews, data.dailyNewCards).length
+          const reviews = data.todaysReviews.filter((review) => review.deckId === deck.id)
+          const due = selectStudyQueue(cards, reviews, data.dailyNewCards).length
           return (
             <button className="deck-row" type="button" key={deck.id} onClick={() => setSelectedDeckId(deck.id)}>
               <span className="deck-row__swatch" style={{ backgroundColor: deck.color }} />

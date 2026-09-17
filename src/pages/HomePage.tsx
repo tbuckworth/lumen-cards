@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
 import { getSetting } from '../lib/db'
 import { calculateStreak, greeting, relativeDate, startOfLocalDay } from '../lib/dates'
-import { selectStudyQueue } from '../lib/studyQueue'
+import { hasNewCards, selectStudyQueue, type StudyMode } from '../lib/studyQueue'
 import type { Route } from '../types'
 import { EmptyState } from '../components/EmptyState'
 
@@ -12,7 +12,7 @@ export function HomePage({
   startReview
 }: {
   navigate: (route: Route) => void
-  startReview: (deckId?: string) => void
+  startReview: (deckId?: string, mode?: StudyMode) => void
 }) {
   const data = useLiveQuery(async () => {
     const [decks, cards, reviews, dailyNewCards] = await Promise.all([
@@ -39,10 +39,11 @@ export function HomePage({
 
   const deckRows = data.decks.map((deck) => {
     const cards = data.cards.filter((card) => card.deckId === deck.id)
+    const reviews = todaysReviews.filter((review) => review.deckId === deck.id)
     return {
       deck,
       count: cards.length,
-      due: selectStudyQueue(cards, todaysReviews, data.dailyNewCards, now).length
+      due: selectStudyQueue(cards, reviews, data.dailyNewCards, now).length
     }
   })
 
@@ -76,15 +77,22 @@ export function HomePage({
               <h2>{dueCards.length ? `${dueCards.length} ${dueCards.length === 1 ? 'card' : 'cards'} ready` : 'All caught up'}</h2>
               <p>{reviewedToday ? `${reviewedToday} reviewed today` : nextDue ? `Next card ${relativeDate(nextDue.due)}` : 'A clear slate'}</p>
             </div>
-            <button
-              className="button button--ink today-card__button"
-              type="button"
-              disabled={!dueCards.length}
-              onClick={() => startReview()}
-            >
-              {dueCards.length ? 'Begin' : <span><span className="checkmark">✓</span> Done</span>}
-              {dueCards.length > 0 && <ArrowRight size={18} />}
-            </button>
+            <div className="today-card__actions">
+              <button
+                className="button button--ink today-card__button"
+                type="button"
+                disabled={!dueCards.length}
+                onClick={() => startReview()}
+              >
+                {dueCards.length ? 'Begin' : <span><span className="checkmark">✓</span> Done</span>}
+                {dueCards.length > 0 && <ArrowRight size={18} />}
+              </button>
+              {!dueCards.length && hasNewCards(data.cards) && (
+                <button className="text-button study-ahead" type="button" onClick={() => startReview(undefined, 'ahead')}>
+                  Study ahead
+                </button>
+              )}
+            </div>
           </section>
 
           <section className="stat-grid" aria-label="Learning summary">
