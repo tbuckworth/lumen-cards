@@ -129,7 +129,7 @@ export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () 
         </button>
       </section>
 
-      <footer className="app-footer"><span className="mini-sun" /> Lumen 1.2 · FSRS scheduling · made to last</footer>
+      <footer className="app-footer"><span className="mini-sun" /> Lumen 1.3 · FSRS scheduling · made to last</footer>
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { db, getSetting } from '../lib/db'
 import { startOfLocalDay } from '../lib/dates'
 import { makeReviewId } from '../lib/importExport'
 import { formatInterval, previewRatings, RATINGS, RATING_LABELS, scheduleReview, serializeFsrsCard } from '../lib/scheduler'
-import { selectStudyQueue, type StudyMode } from '../lib/studyQueue'
+import { selectStudyQueue, shuffleStudyQueue, type StudyMode } from '../lib/studyQueue'
 import type { CardRecord } from '../types'
 
 interface SessionResult {
@@ -38,7 +38,7 @@ export function ReviewPage({ deckId, mode = 'due', onClose }: { deckId?: string;
       ])
       setRetention(desiredRetention)
       const reviews = deckId ? todaysReviews.filter((review) => review.deckId === deckId) : todaysReviews
-      setQueue(selectStudyQueue(allCards, reviews, dailyNewCards, new Date(), mode))
+      setQueue(shuffleStudyQueue(selectStudyQueue(allCards, reviews, dailyNewCards, new Date(), mode)))
       shownAt.current = Date.now()
     }
     void loadQueue().catch((error) => setError(storageError(error)))
