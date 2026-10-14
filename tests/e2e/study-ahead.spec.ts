@@ -79,18 +79,20 @@ test('each deck keeps its allowance in counts and sessions; deck study ahead is 
   await page.screenshot({ path: testInfo.outputPath('deck-study-ahead.png'), fullPage: true })
   await page.getByRole('button', { name: 'Study ahead' }).click()
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '2')
-  await expect(page.getByRole('heading', { name: 'Anatomy question 6' })).toBeVisible()
+  // Sessions are shuffled, so either remaining card may come first.
+  const firstAhead = (await page.getByRole('heading', { name: /^Anatomy question [67]$/ }).textContent())!
+  const studiedId = `Anatomy-${Number(firstAhead.split(' ').at(-1)) - 1}`
   await page.getByRole('button', { name: 'Show answer' }).click()
   await page.getByRole('button', { name: /Good/ }).click()
   await page.getByRole('button', { name: 'Undo last answer' }).click()
-  await expect(page.getByRole('heading', { name: 'Anatomy question 6' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: firstAhead, exact: true })).toBeVisible()
   await page.getByRole('button', { name: /Easy/ }).click()
   await page.getByRole('button', { name: 'End review' }).click()
   const after = await backup(page)
   expect(after.reviews).toHaveLength(before.reviews.length + 1)
   expect(after.reviews).toEqual(expect.arrayContaining(before.reviews))
-  expect(after.cards.filter((card) => card.id !== 'Anatomy-5')).toEqual(before.cards.filter((card) => card.id !== 'Anatomy-5'))
-  const studied = after.cards.find((card) => card.id === 'Anatomy-5')!
+  expect(after.cards.filter((card) => card.id !== studiedId)).toEqual(before.cards.filter((card) => card.id !== studiedId))
+  const studied = after.cards.find((card) => card.id === studiedId)!
   expect(studied.fsrs.reps).toBe(1)
   expect(studied.fsrs.state).not.toBe(State.New)
   expect(new Date(studied.due).getTime()).toBeGreaterThan(new Date(studied.fsrs.last_review!).getTime())
@@ -140,7 +142,7 @@ test('Home study ahead serves remaining unseen cards across decks, survives relo
   expect(reimported.cards.map((card) => [card.id, card.fsrs, card.due, card.suspended]))
     .toEqual(saved.cards.map((card) => [card.id, card.fsrs, card.due, card.suspended]))
   await expect(page.getByLabel('New cards per day, per deck')).toHaveValue('5')
-  await expect(page.getByText('Lumen 1.2 · FSRS scheduling · made to last')).toBeVisible()
+  await expect(page.getByText('Lumen 1.3 · FSRS scheduling · made to last')).toBeVisible()
   await page.getByRole('button', { name: 'Decks', exact: true }).click()
   await page.getByRole('button', { name: /Botany/ }).click()
   await expect(page.getByRole('button', { name: 'Nothing due' })).toBeDisabled()

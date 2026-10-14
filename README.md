@@ -15,6 +15,7 @@ There is no App Store purchase, developer account, login, API key, or subscripti
 ## What it does
 
 - Schedules reviews with [FSRS](https://github.com/open-spaced-repetition/ts-fsrs), with adjustable desired retention and a daily new-card allowance for each deck. When nothing is due, **Study ahead** on Today or a deck lets you continue with remaining unseen cards without changing your settings or bringing future reviews forward.
+- Shows the day’s new cards before reviews, and shuffles each session so the order of the cards gives nothing away. Which cards are due, and when they return, is still decided by FSRS alone.
 - Creates, edits, pauses, deletes, searches, and studies cards in separate decks.
 - Displays embedded PNG, JPEG and WebP images on either side, including image-only cards, with tap-to-enlarge viewing.
 - Keeps repeated prompts with different images distinct and preserves images in deck exports and full backups. See the [image-deck guide](docs/image-decks.md).

@@ -1,6 +1,6 @@
 # Image decks in Lumen
 
-Open [Lumen](https://tbuckworth.github.io/lumen-cards/), accept **Update now** if offered, and check that Settings says **Lumen 1.2**. Keep your existing installation and browser data. Updating does not reset your cards.
+Open [Lumen](https://tbuckworth.github.io/lumen-cards/), accept **Update now** if offered, and check that Settings says **Lumen 1.3**. Keep your existing installation and browser data. Updating does not reset your cards.
 
 ## For botanical identification
 

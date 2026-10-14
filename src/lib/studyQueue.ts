@@ -7,6 +7,8 @@ export function hasNewCards(cards: CardRecord[]): boolean {
   return cards.some((card) => !card.suspended && card.fsrs.state === State.New)
 }
 
+// Chooses which cards a session may show. New cards come before recall; the
+// allowance still takes each deck's new cards in the order they were added.
 export function selectStudyQueue(
   cards: CardRecord[],
   todaysReviews: ReviewRecord[],
@@ -35,5 +37,23 @@ export function selectStudyQueue(
       newStudiedByDeck.set(card.deckId, used + 1)
       return true
     })
-  return [...dueReviews, ...newCards]
+  return [...newCards, ...dueReviews]
+}
+
+// Shuffles the order a session is shown in, so neighbouring cards give no clues.
+// New cards stay ahead of recall; which cards are studied is unchanged.
+export function shuffleStudyQueue(queue: CardRecord[], random = Math.random): CardRecord[] {
+  const isNew = (card: CardRecord) => card.fsrs.state === State.New
+  return [...shuffle(queue.filter(isNew), random), ...shuffle(queue.filter((card) => !isNew(card)), random)]
+}
+
+function shuffle<T>(items: T[], random: () => number): T[] {
+  const result = [...items]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    const swap = result[i]
+    result[i] = result[j]
+    result[j] = swap
+  }
+  return result
 }
