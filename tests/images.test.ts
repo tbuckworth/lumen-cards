@@ -1,16 +1,49 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { createElement } from 'react'
+import { cleanup, render } from '@testing-library/react'
 import { createCard, createDeck, db } from '../src/lib/db'
-import { importContentCards, importDeckPack, makeAnkiTsv, makeBackup, makeDeckPack, parseDeckJson, parseTabularCards, restoreBackup } from '../src/lib/importExport'
-import { blobDataUri, imageBlob } from '../src/lib/images'
+import { importContentCards, importDeckPack, makeAnkiTsv, makeBackup, makeDeckExport, makeDeckPack, parseDeckJson, parseTabularCards, restoreBackup } from '../src/lib/importExport'
+import { assembleContentKey, blobDataUri, contentKey, imageBlob } from '../src/lib/images'
+import { ImageField } from '../src/components/CardImage'
 
 const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII='
 const image = (index = 0) => `data:image/png;base64,${btoa(atob(pixel) + String(index))}`
 const pack = (cards: { id?: string; front: string; back: string; frontImage?: string; backImage?: string }[]) => ({
   format: 'lumen-deck' as const, version: 1 as const, deck: { id: 'botany', title: 'Botanical plates', cards }
 })
-afterEach(async () => { await db.delete(); await db.open() })
+afterEach(async () => { cleanup(); await db.delete(); await db.open() })
 
 describe('image deck safety', () => {
+  it('keeps the picker and data-URI validator limited to PNG, JPEG and WebP', () => {
+    const { getByLabelText } = render(createElement(ImageField, { side: 'Front', onChange: () => {} }))
+    expect(getByLabelText('Front image (optional)')).toHaveAttribute('accept', 'image/png,image/jpeg,image/webp')
+    const fixtures = [
+      ['image/png', [137, 80, 78, 71, 13, 10, 26, 10, ...Array(25).fill(0)]],
+      ['image/jpeg', [255, 216, 255, ...Array(13).fill(0)]],
+      ['image/webp', [82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80, ...Array(8).fill(0)]]
+    ] as const
+    for (const [type, bytes] of fixtures) {
+      const data = btoa(String.fromCharCode(...bytes))
+      expect(imageBlob(`data:${type};base64,${data}`).type).toBe(type)
+      for (const unsupported of ['image/gif', 'image/svg+xml', 'image/jpg']) {
+        expect(() => imageBlob(`data:${unsupported};base64,${data}`)).toThrow('PNG, JPEG or WebP')
+      }
+      const wrongType = type === 'image/png' ? 'image/jpeg' : 'image/png'
+      expect(() => imageBlob(`data:${wrongType};base64,${data}`)).toThrow('does not match')
+    }
+  })
+
+  it('preserves matching-key layout and the exact image hashes', async () => {
+    expect(assembleContentKey('  Mixed\n  CASE  ')).toBe('["mixed case","",""]')
+    const front = imageBlob(image())
+    const back = imageBlob(image(1))
+    expect(JSON.parse(await contentKey('  Mixed\n  CASE  ', front, back))).toEqual([
+      'mixed case',
+      '8f1e1a894d51bf3e713eec3354c9c7d9b388dbfe6d15831b0f681941a56e694e',
+      'c9641846ec384d2bb126a01815752337fa1c9de4ea4b7d78647dce5873beb6bf'
+    ])
+  })
+
   it('keeps all 23 distinct images with identical prompts and reimports idempotently', async () => {
     const cards = Array.from({ length: 23 }, (_, i) => ({ front: 'Identify this plant', back: `Plant ${i}`, frontImage: image(i) }))
     expect((await importDeckPack(pack(cards))).cardsAdded).toBe(23)
@@ -79,6 +112,9 @@ describe('image deck safety', () => {
     await importDeckPack(pack([{ front: 'A', back: '', backImage: image() }, { front: 'A', back: '', backImage: image(1) }]))
     expect(await db.cards.count()).toBe(2)
     await expect(makeAnkiTsv('botany')).rejects.toThrow('cannot preserve images')
+    await expect(makeDeckExport({ id: 'botany', title: 'Botanical plates' }, 'anki')).rejects.toThrow('cannot preserve images')
+    const exported = await makeDeckExport({ id: 'botany', title: 'Botanical plates' }, 'lumen')
+    expect(new Set(JSON.parse(exported.contents).deck.cards.map((card: { backImage: string }) => card.backImage))).toEqual(new Set([image(), image(1)]))
     expect(() => parseTabularCards('Front\tBack\nIdentify <img src="plate.jpg">\tRose')).toThrow('media')
   })
 

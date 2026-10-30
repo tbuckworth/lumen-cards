@@ -1,0 +1,3 @@
+{
+  "prompt": "Use this review history to diagnose misconceptions. Suggest edits only where a card is ambiguous, overloaded, or missing prerequisite context. Return any revised cards as a valid Lumen deck."
+}

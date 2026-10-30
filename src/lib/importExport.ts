@@ -1,8 +1,10 @@
 import Papa from 'papaparse'
-import { blobDataUri, contentKey, imageBlob, imageSchema, MAX_IMPORT_BYTES, validateImage, storeImage } from './images'
+import { assembleContentKey, blobDataUri, contentKey, imageBlob, imageSchema, MAX_IMPORT_BYTES, validateImage, storeImage } from './images'
+import learningReport from '../config/learning-report.json'
 import { z } from 'zod'
 import { Rating } from 'ts-fsrs'
 import { createCard, createDeck, db, setSetting } from './db'
+import { BACKUP_FORMAT, DECK_FORMAT, RETENTION_BOUNDS } from '../types'
 import type {
   CardRecord,
   DeckRecord,
@@ -25,8 +27,8 @@ const contentCardSchema = z.object({
 }).refine((card) => Boolean(card.front || card.frontImage) && Boolean(card.back || card.backImage), 'Each side needs text or an image.')
 
 export const lumenDeckPackSchema = z.object({
-  format: z.literal('lumen-deck'),
-  version: z.literal(1),
+  format: z.literal(DECK_FORMAT.format),
+  version: z.literal(DECK_FORMAT.version),
   createdAt: z.string().optional(),
   deck: z.object({
     id: z.string().min(1).optional(),
@@ -97,15 +99,15 @@ const reviewRecordSchema = z.object({
 })
 
 const backupSchema = z.object({
-  format: z.literal('lumen-backup'),
-  version: z.literal(1),
+  format: z.literal(BACKUP_FORMAT.format),
+  version: z.literal(BACKUP_FORMAT.version),
   exportedAt: z.string(),
   decks: z.array(deckRecordSchema),
   cards: z.array(cardRecordSchema),
   reviews: z.array(reviewRecordSchema),
   settings: z.array(z.discriminatedUnion('key', [
     z.object({ key: z.literal('onboardingComplete'), value: z.boolean() }),
-    z.object({ key: z.literal('desiredRetention'), value: z.number().min(0.8).max(0.95) }),
+    z.object({ key: z.literal('desiredRetention'), value: z.number().min(RETENTION_BOUNDS.min).max(RETENTION_BOUNDS.max) }),
     z.object({ key: z.literal('dailyNewCards'), value: z.number().int().min(0).max(1000) }),
     z.object({ key: z.literal('lastBackupAt'), value: dateSchema.nullable() })
   ]))
@@ -118,8 +120,9 @@ function htmlToText(value: string): string {
   return (parser.parseFromString(withBreaks, 'text/html').body.textContent ?? '').trim()
 }
 
-function checkDeckSize(raw: string) {
-  if (new Blob([raw]).size > MAX_IMPORT_BYTES) throw new Error('Deck files must be 100 MB or smaller. Split this deck into smaller files.')
+export function checkDeckSize(input: string | Pick<Blob, 'size'>): void {
+  const size = typeof input === 'string' ? new Blob([input]).size : input.size
+  if (size > MAX_IMPORT_BYTES) throw new Error('Deck files must be 100 MB or smaller. Split this deck into smaller files.')
 }
 
 export function parseDeckJson(raw: string): LumenDeckPack | { backup: z.infer<typeof backupSchema> } {
@@ -131,8 +134,8 @@ export function parseDeckJson(raw: string): LumenDeckPack | { backup: z.infer<ty
   }
 
   if (parsed && typeof parsed === 'object' && 'format' in parsed) {
-    if (parsed.format === 'lumen-backup') return { backup: parseSchema(backupSchema, parsed) }
-    if (parsed.format === 'lumen-deck') {
+    if (parsed.format === BACKUP_FORMAT.format) return { backup: parseSchema(backupSchema, parsed) }
+    if (parsed.format === DECK_FORMAT.format) {
       checkDeckSize(raw)
       return parseSchema(lumenDeckPackSchema, parsed)
     }
@@ -142,7 +145,7 @@ export function parseDeckJson(raw: string): LumenDeckPack | { backup: z.infer<ty
   checkDeckSize(raw)
   const generic = parseSchema(compactDeckSchema, parsed)
   return {
-    format: 'lumen-deck', version: 1, createdAt: new Date().toISOString(),
+    ...DECK_FORMAT, createdAt: new Date().toISOString(),
     deck: { title: generic.title ?? 'From Claude', description: generic.description ?? '', cards: generic.cards }
   }
 }
@@ -161,8 +164,11 @@ export function parseTabularCards(raw: string): LumenContentCard[] {
     delimiter,
     skipEmptyLines: 'greedy'
   })
-  if (result.errors.length && result.data.length === 0) {
-    throw new Error(result.errors[0]?.message ?? 'The text file could not be read.')
+  // Delimiter detection can advise using the default comma for a valid short CSV.
+  // Structural errors must reject the entire import, even when rows were parsed.
+  const error = result.errors.find((issue) => issue.code !== 'UndetectableDelimiter')
+  if (error) {
+    throw new Error(`Row ${(error.row ?? 0) + 1}: ${error.message}`)
   }
 
   const rows = result.data
@@ -180,8 +186,8 @@ export function parseTabularCards(raw: string): LumenContentCard[] {
   const tagsIndex = columns.indexOf('tags')
   const notesIndex = columns.indexOf('notes')
 
-  const cards = dataRows
-    .map((row) => ({
+  const cards = dataRows.map((row, index) => {
+    const card = {
       front: htmlToText(row[frontIndex] ?? ''),
       back: htmlToText(row[backIndex] ?? ''),
       tags:
@@ -189,8 +195,10 @@ export function parseTabularCards(raw: string): LumenContentCard[] {
           ? (row[tagsIndex] ?? '').split(/[ ,]+/).map((tag) => tag.trim()).filter(Boolean)
           : [],
       notes: notesIndex >= 0 ? htmlToText(row[notesIndex] ?? '') : ''
-    }))
-    .filter((card) => card.front && card.back)
+    }
+    if (!card.front || !card.back) throw new Error(`Row ${index + (hasHeader ? 2 : 1)}: Each card needs a complete front/back pair.`)
+    return card
+  })
 
   if (!cards.length) throw new Error('No complete front/back pairs were found.')
   return cards
@@ -228,7 +236,7 @@ async function importPreparedCards(deckId: string, cards: PreparedCards): Promis
   if (!await db.decks.get(deckId)) throw new Error('Choose an existing deck or name a new one.')
   const existing = await db.cards.where('deckId').equals(deckId).toArray()
   const byId = new Map(existing.map((card) => [card.id, card]))
-  const keyFor = (card: CardRecord) => card.contentKey ?? JSON.stringify([card.front.trim().replace(/\s+/g, ' ').toLowerCase(), '', ''])
+  const keyFor = (card: CardRecord) => card.contentKey ?? assembleContentKey(card.front)
   const byContent = new Map<string, CardRecord[]>()
   const addKey = (card: CardRecord) => byContent.set(keyFor(card), [...(byContent.get(keyFor(card)) ?? []), card])
   existing.forEach(addKey)
@@ -271,13 +279,7 @@ export async function importDeckPack(input: LumenDeckPack): Promise<ImportResult
   return db.transaction('rw', db.decks, db.cards, async () => {
     const existing = pack.deck.id ? await db.decks.get(pack.deck.id)
       : await db.decks.filter((deck) => deck.title.toLowerCase() === pack.deck.title.toLowerCase()).first()
-    const deck = existing ?? await createDeck(pack.deck.title, pack.deck.description, pack.deck.color ?? '#ae765f')
-    // Preserve imported deck identity so the next import targets this same deck.
-    if (!existing && pack.deck.id) {
-      await db.decks.delete(deck.id)
-      deck.id = pack.deck.id
-      await db.decks.add(deck)
-    }
+    const deck = existing ?? await createDeck(pack.deck.title, pack.deck.description, pack.deck.color, pack.deck.id)
     const result = await importPreparedCards(deck.id, prepared)
     result.decksAdded = existing ? 0 : 1
     return result
@@ -291,13 +293,13 @@ export async function restoreBackup(raw: string): Promise<ImportResult> {
   const prepared = await prepareCards(backup.cards)
   const cards = backup.cards.map((card, index) => ({ ...card, ...prepared[index] }))
   const decks = new Set(backup.decks.map((deck) => deck.id))
-  const cardIds = new Set(cards.map((card) => card.id))
-  if (decks.size !== backup.decks.length || cardIds.size !== cards.length || new Set(backup.reviews.map((review) => review.id)).size !== backup.reviews.length) throw new Error('Backup contains duplicate IDs.')
-  if (cards.some((card) => !decks.has(card.deckId)) || backup.reviews.some((review) => !cardIds.has(review.cardId) || cards.find((card) => card.id === review.cardId)?.deckId !== review.deckId)) throw new Error('Backup contains missing or mismatched cards or decks.')
+  const cardsById = new Map(cards.map((card) => [card.id, card]))
+  if (decks.size !== backup.decks.length || cardsById.size !== cards.length || new Set(backup.reviews.map((review) => review.id)).size !== backup.reviews.length) throw new Error('Backup contains duplicate IDs.')
+  if (cards.some((card) => !decks.has(card.deckId)) || backup.reviews.some((review) => cardsById.get(review.cardId)?.deckId !== review.deckId)) throw new Error('Backup contains missing or mismatched cards or decks.')
   await db.transaction('rw', db.decks, db.cards, db.reviews, db.settings, async () => {
     await db.decks.bulkPut(backup.decks as DeckRecord[])
     await db.cards.bulkPut(cards as CardRecord[])
-    await db.reviews.where('cardId').anyOf([...cardIds]).delete()
+    await db.reviews.where('cardId').anyOf([...cardsById.keys()]).delete()
     await db.reviews.bulkPut(backup.reviews as ReviewRecord[])
     await db.settings.bulkPut(backup.settings as SettingRecord[])
   })
@@ -314,8 +316,7 @@ export async function makeDeckPack(deckId: string): Promise<LumenDeckPack> {
   if (!deck) throw new Error('Deck not found.')
   const cards = await db.cards.where('deckId').equals(deckId).toArray()
   return {
-    format: 'lumen-deck',
-    version: 1,
+    ...DECK_FORMAT,
     createdAt: new Date().toISOString(),
     deck: {
       id: deck.id,
@@ -345,8 +346,7 @@ export async function makeBackup(): Promise<string> {
   ]))
   const contents = JSON.stringify(
     {
-      format: 'lumen-backup',
-      version: 1,
+      ...BACKUP_FORMAT,
       exportedAt: new Date().toISOString(),
       decks,
       cards: await Promise.all(cards.map(async ({ contentKey: _key, ...card }) => ({ ...card, frontImage: await blobDataUri(card.frontImage), backImage: await blobDataUri(card.backImage) }))),
@@ -369,6 +369,13 @@ function tsvField(value: string): string {
     .replace(/\r?\n/g, '<br>')
 }
 
+const ankiColumns = [
+  { label: 'Front', value: (card: CardRecord) => card.front },
+  { label: 'Back', value: (card: CardRecord) => card.back },
+  { label: 'Tags', value: (card: CardRecord) => card.tags.join(' ') },
+  { label: 'Notes', value: (card: CardRecord) => card.notes }
+]
+
 export async function makeAnkiTsv(deckId: string): Promise<string> {
   const deck = await db.decks.get(deckId)
   if (!deck) throw new Error('Deck not found.')
@@ -378,12 +385,35 @@ export async function makeAnkiTsv(deckId: string): Promise<string> {
     '#separator:Tab',
     '#html:true',
     `#deck:${deck.title}`,
-    '#columns:Front\tBack\tTags\tNotes'
+    `#columns:${ankiColumns.map((column) => column.label).join('\t')}`
   ]
   const rows = cards.map((card) =>
-    [card.front, card.back, card.tags.join(' '), card.notes].map(tsvField).join('\t')
+    ankiColumns.map((column) => tsvField(column.value(card))).join('\t')
   )
   return [...header, ...rows].join('\n')
+}
+
+export type DeckExportFormat = 'lumen' | 'anki'
+
+const deckExportFormats = {
+  lumen: {
+    encode: async (id: string) => JSON.stringify(await makeDeckPack(id), null, 2),
+    suffix: '.lumen.json', mimeType: 'application/json', successMessage: 'Deck exported.'
+  },
+  anki: {
+    encode: makeAnkiTsv,
+    suffix: '-anki.txt', mimeType: 'text/plain;charset=utf-8', successMessage: 'Anki file exported.'
+  }
+} satisfies Record<DeckExportFormat, { encode: (id: string) => Promise<string>; suffix: string; mimeType: string; successMessage: string }>
+
+export async function makeDeckExport(deck: Pick<DeckRecord, 'id' | 'title'>, format: DeckExportFormat) {
+  const policy = deckExportFormats[format]
+  return {
+    contents: await policy.encode(deck.id),
+    filename: `${safeFilename(deck.title)}${policy.suffix}`,
+    mimeType: policy.mimeType,
+    successMessage: policy.successMessage
+  }
 }
 
 export async function makeLearningReport(deckId?: string): Promise<string> {
@@ -392,25 +422,18 @@ export async function makeLearningReport(deckId?: string): Promise<string> {
     ? await db.cards.where('deckId').equals(deckId).toArray()
     : await db.cards.toArray()
   const ids = new Set(cards.map((card) => card.id))
-  const reviews = (await db.reviews.orderBy('reviewedAt').reverse().toArray()).filter((review) =>
+  const reviews = (await db.reviews.toArray()).filter((review) =>
     ids.has(review.cardId)
   )
-  const byCard = new Map<string, ReviewRecord[]>()
+  const byCard = new Map<string, { reviews: number; again: number }>()
   for (const review of reviews) {
-    const list = byCard.get(review.cardId) ?? []
-    list.push(review)
-    byCard.set(review.cardId, list)
+    const counts = byCard.get(review.cardId) ?? { reviews: 0, again: 0 }
+    counts.reviews += 1
+    if (review.rating === Rating.Again) counts.again += 1
+    byCard.set(review.cardId, counts)
   }
   const difficult = cards
-    .map((card) => {
-      const history = byCard.get(card.id) ?? []
-      return {
-        card,
-        again: history.filter((review) => review.rating === Rating.Again).length,
-        reviews: history.length,
-        latest: history[0]
-      }
-    })
+    .map((card) => ({ card, ...(byCard.get(card.id) ?? { reviews: 0, again: 0 }) }))
     .filter((entry) => entry.reviews > 0)
     .sort((a, b) => b.again - a.again || b.reviews - a.reviews)
     .slice(0, 12)
@@ -439,7 +462,7 @@ export async function makeLearningReport(deckId?: string): Promise<string> {
     '',
     '## Prompt for Claude',
     '',
-    'Use this review history to diagnose misconceptions. Suggest edits only where a card is ambiguous, overloaded, or missing prerequisite context. Return any revised cards as a valid Lumen deck.'
+    learningReport.prompt
   )
   return lines.filter((line) => line !== '').join('\n\n')
 }

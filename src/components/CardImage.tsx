@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import type { CardImageData } from '../types'
-import { asBlob, readImageFile } from '../lib/images'
+import { asBlob, IMAGE_ACCEPT, readImageFile } from '../lib/images'
 import { storageError } from '../lib/errors'
 
 export function CardImage({ image, side, thumbnail = false }: { image?: CardImageData; side: string; thumbnail?: boolean }) {
@@ -46,7 +46,7 @@ export function ImageField({ side, image, onChange, disabled = false, onBusy }: 
   }
   return <div className="image-field">
     <label>{side} image (optional)
-      <input type="file" accept="image/png,image/jpeg,image/webp" disabled={disabled || busy} onChange={(event) => {
+      <input type="file" accept={IMAGE_ACCEPT} disabled={disabled || busy} onChange={(event) => {
         void choose(event.target.files?.[0]); event.target.value = ''
       }} />
     </label>

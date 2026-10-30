@@ -1,12 +1,12 @@
 import { FileJson, FileUp, Plus, Sparkles } from 'lucide-react'
 import { useState, useRef } from 'react'
 import { ImageField } from '../components/CardImage'
-import { MAX_IMPORT_BYTES, contentKey, storeImage } from '../lib/images'
+import { contentKey, storeImage } from '../lib/images'
 import { storageError } from '../lib/errors'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createCard, createDeck, db } from '../lib/db'
-import { importContentCards, importDeckPack, parseDeckJson, parseTabularCards, restoreBackup } from '../lib/importExport'
-import { DECK_COLORS, type Route } from '../types'
+import { checkDeckSize, importContentCards, importDeckPack, parseDeckJson, parseTabularCards, restoreBackup } from '../lib/importExport'
+import { DECK_COLORS, DECK_FORMAT, type Route } from '../types'
 
 type Notice = (message: string) => void
 
@@ -81,7 +81,7 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
   }
 
   async function importRaw(raw: string, filename = '') {
-    if (new Blob([raw]).size > MAX_IMPORT_BYTES) throw new Error('Deck files must be 100 MB or smaller. Split this deck into smaller files.')
+    checkDeckSize(raw)
     if (!raw.trim()) throw new Error('Paste a deck or choose a file first.')
     const looksLikeJson = filename.endsWith('.json') || raw.trimStart().startsWith('{')
     if (looksLikeJson) {
@@ -96,7 +96,7 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
     }
     const cards = parseTabularCards(raw)
     if (newDeckTitle.trim()) {
-      const result = await importDeckPack({ format: 'lumen-deck', version: 1, deck: { title: newDeckTitle.trim(), cards } })
+      const result = await importDeckPack({ ...DECK_FORMAT, deck: { title: newDeckTitle.trim(), cards } })
       setDeckId(result.deckId ?? '')
       setNewDeckTitle('')
       return `${result.cardsAdded} added${result.cardsUpdated ? `, ${result.cardsUpdated} updated` : ''}.`
@@ -130,7 +130,7 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
     setBusy(true)
     setError('')
     try {
-      if (file.size > MAX_IMPORT_BYTES) throw new Error('Deck files must be 100 MB or smaller. Split this deck into smaller files.')
+      checkDeckSize(file)
       notify(await importRaw(await file.text(), file.name.toLowerCase()))
       navigate('decks')
     } catch (error) {

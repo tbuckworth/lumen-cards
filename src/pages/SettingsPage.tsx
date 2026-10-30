@@ -4,11 +4,12 @@ import { storageError } from '../lib/errors'
 import { InstallGuide } from '../components/InstallGuide'
 import { getSetting, resetDatabase, setSetting } from '../lib/db'
 import { downloadText, makeBackup, makeLearningReport, restoreBackup, shareTextFile } from '../lib/importExport'
+import { DEFAULT_SETTINGS, RETENTION_BOUNDS } from '../types'
 
 type Notice = (message: string) => void
 
 export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () => void }) {
-  const [retention, setRetention] = useState(90)
+  const [retention, setRetention] = useState(Math.round(DEFAULT_SETTINGS.desiredRetention * 100))
   const [dailyNew, setDailyNew] = useState(20)
   const [lastBackup, setLastBackup] = useState<string | null>(null)
   const [persistent, setPersistent] = useState<boolean | null>(null)
@@ -90,8 +91,8 @@ export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () 
         <div className="settings-title"><Brain size={19} /><div><h2>Learning rhythm</h2><p>FSRS adapts the exact interval for every card.</p></div></div>
         <label className="range-setting">
           <span><strong>Desired retention</strong><output>{retention}%</output></span>
-          <input type="range" min="80" max="95" step="1" value={retention} onChange={(event) => changeRetention(Number(event.target.value))} />
-          <small>Higher recall means more reviews. 90% is a balanced default.</small>
+          <input type="range" min={RETENTION_BOUNDS.min * 100} max={RETENTION_BOUNDS.max * 100} step="1" value={retention} onChange={(event) => changeRetention(Number(event.target.value))} />
+          <small>Higher recall means more reviews. {Math.round(DEFAULT_SETTINGS.desiredRetention * 100)}% is a balanced default.</small>
         </label>
         <label className="select-setting">
           <span><strong>New cards per day, per deck</strong><small>Each deck has its own allowance. Study ahead for more.</small></span>

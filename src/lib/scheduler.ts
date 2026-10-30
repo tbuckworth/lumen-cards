@@ -1,12 +1,11 @@
 import {
   Rating,
-  createEmptyCard,
   fsrs,
   type Card,
   type Grade,
   type RecordLogItem
 } from 'ts-fsrs'
-import type { CardRecord, StoredFsrsCard } from '../types'
+import { DEFAULT_SETTINGS, type CardRecord, type StoredFsrsCard } from '../types'
 
 export const RATINGS = [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy] as const
 
@@ -25,8 +24,8 @@ export function serializeFsrsCard(card: Card): StoredFsrsCard {
   }
 }
 
-export function deserializeFsrsCard(card?: StoredFsrsCard): Card {
-  if (!card) return createEmptyCard(new Date())
+export function deserializeFsrsCard(card: StoredFsrsCard): Card {
+  if (!card) throw new Error('Missing persisted scheduling state. Restore this card from a full Lumen backup.')
   return {
     ...card,
     due: new Date(card.due),
@@ -34,7 +33,7 @@ export function deserializeFsrsCard(card?: StoredFsrsCard): Card {
   }
 }
 
-export function makeScheduler(desiredRetention = 0.9) {
+export function makeScheduler(desiredRetention = DEFAULT_SETTINGS.desiredRetention) {
   return fsrs({
     request_retention: desiredRetention,
     maximum_interval: 36500,
@@ -48,7 +47,7 @@ export function makeScheduler(desiredRetention = 0.9) {
 export function previewRatings(
   card: CardRecord,
   now = new Date(),
-  desiredRetention = 0.9
+  desiredRetention = DEFAULT_SETTINGS.desiredRetention
 ): RecordLogItem[] {
   const result = makeScheduler(desiredRetention).repeat(deserializeFsrsCard(card.fsrs), now)
   return RATINGS.map((rating) => result[rating])
@@ -58,7 +57,7 @@ export function scheduleReview(
   card: CardRecord,
   rating: Grade,
   now = new Date(),
-  desiredRetention = 0.9
+  desiredRetention = DEFAULT_SETTINGS.desiredRetention
 ): RecordLogItem {
   return makeScheduler(desiredRetention).next(deserializeFsrsCard(card.fsrs), now, rating)
 }
