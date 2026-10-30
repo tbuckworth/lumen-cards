@@ -138,7 +138,7 @@ export function DecksPage({
 
 function DeckMenu({ deck, notify, onDeleted }: { deck: DeckRecord; notify: Notice; onDeleted: () => void }) {
   async function run(action: () => Promise<void>) {
-    try { await action() } catch (error) { if (!(error instanceof Error && error.name === 'AbortError')) notify(storageError(error)) }
+    try { await action() } catch (error) { notify(storageError(error)) }
   }
 
   async function exportDeck(format: DeckExportFormat) {
@@ -150,6 +150,7 @@ function DeckMenu({ deck, notify, onDeleted }: { deck: DeckRecord; notify: Notic
   async function shareReport() {
     const report = await makeLearningReport(deck.id)
     const result = await shareTextFile(report, `${safeFilename(deck.title)}-learning-report.md`, `${deck.title} learning report`)
+    if (result === 'cancelled') return
     notify(result === 'shared' ? 'Ready to share.' : 'Report downloaded.')
   }
 

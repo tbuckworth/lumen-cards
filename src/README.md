@@ -9,6 +9,7 @@
 - `components/CardContentFields.tsx`: shared create/edit card fields and draft state.
 - `components/CardImage.tsx`: image display, enlargement and file input.
 - `components/EmptyState.tsx`: shared empty-state presentation.
+- `components/ErrorBoundary.tsx`: visible page failures with manual remount or root reload.
 - `components/InstallGuide.tsx`: installation instructions.
 - `components/Logo.tsx`: Lumen wordmark.
 - `components/Modal.tsx`: modal presentation and focus handling.

@@ -494,10 +494,14 @@ export async function shareTextFile(
   filename: string,
   title: string,
   type = 'text/plain'
-): Promise<'shared' | 'downloaded'> {
+): Promise<'shared' | 'downloaded' | 'cancelled'> {
   const file = new File([contents], filename, { type })
   if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-    await navigator.share({ title, files: [file] })
+    try { await navigator.share({ title, files: [file] }) }
+    catch (error) {
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') return 'cancelled'
+      throw error
+    }
     return 'shared'
   }
   downloadText(contents, filename, type)

@@ -3,7 +3,10 @@ import { registerSW } from 'virtual:pwa-register'
 import { BottomNav } from './components/BottomNav'
 import { Logo } from './components/Logo'
 import { Onboarding } from './components/Onboarding'
-import { getSetting, seedSampleDeck, setSetting } from './lib/db'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { db, getSetting, seedSampleDeck, setSetting } from './lib/db'
+import { storageError } from './lib/errors'
+import { useAsyncAction } from './hooks/useAsyncAction'
 import type { StudyMode } from './lib/studyQueue'
 import { AddPage } from './pages/AddPage'
 import { DecksPage } from './pages/DecksPage'
@@ -22,12 +25,21 @@ function routeFromHash(): Route {
 export default function App() {
   const [route, setRoute] = useState<Route>(routeFromHash)
   const [ready, setReady] = useState(false)
+  const [startupError, setStartupError] = useState('')
+  const [startupAttempt, setStartupAttempt] = useState(0)
+  const protection = useAsyncAction()
   const [onboardingComplete, setOnboardingComplete] = useState(true)
   const [reviewDeckId, setReviewDeckId] = useState<string | undefined>()
   const [reviewMode, setReviewMode] = useState<StudyMode>('due')
   const [toast, setToast] = useState('')
   const [updateAction, setUpdateAction] = useState<(() => void) | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
+  const mounted = useRef(false)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false; window.clearTimeout(toastTimer.current) }
+  }, [])
 
   const notify = useCallback((message: string, duration = 3600) => {
     window.clearTimeout(toastTimer.current)
@@ -36,10 +48,17 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    let current = true
+    setStartupError('')
     void getSetting<boolean>('onboardingComplete').then((value) => {
+      if (!current) return
       setOnboardingComplete(value)
       setReady(true)
-    })
+    }).catch((error: unknown) => { if (current) setStartupError(storageError(error)) })
+    return () => { current = false }
+  }, [startupAttempt])
+
+  useEffect(() => {
     const onHash = () => setRoute(routeFromHash())
     window.addEventListener('hashchange', onHash)
     let registration: ServiceWorkerRegistration | undefined
@@ -75,11 +94,18 @@ export default function App() {
     setRoute('review')
   }, [])
 
+  const requestProtection = useCallback(() => protection.run(async () => {
+    if (navigator.storage?.persist) await navigator.storage.persist()
+  }), [protection.run])
+
   async function finishOnboarding(withSample: boolean) {
-    if (withSample) await seedSampleDeck()
-    await setSetting('onboardingComplete', true)
+    await db.transaction('rw', db.decks, db.cards, db.settings, async () => {
+      if (withSample) await seedSampleDeck()
+      await setSetting('onboardingComplete', true)
+    })
+    if (!mounted.current) return
     setOnboardingComplete(true)
-    if (navigator.storage?.persist) void navigator.storage.persist()
+    await requestProtection()
   }
 
   function resetOnboarding() {
@@ -87,18 +113,25 @@ export default function App() {
     navigate('home')
   }
 
-  if (!ready) return <div className="app-loading"><Logo /><span className="loading-line" /></div>
+  if (!ready) return <div className="app-loading"><Logo />{startupError ? <>
+    <p role="alert">Could not open your library: {startupError}</p>
+    <button className="button button--primary" type="button" onClick={() => setStartupAttempt((attempt) => attempt + 1)}>Retry</button>
+  </> : <span className="loading-line" />}</div>
   if (!onboardingComplete) return <Onboarding onFinish={finishOnboarding} />
 
   return (
     <div className={`app-shell route-${route}`}>
       {route !== 'review' && <header className="desktop-brand"><Logo /></header>}
       <main className="app-main">
+        {protection.error && <div><p role="alert">Storage protection could not be requested: {protection.error}</p>
+          <button type="button" disabled={protection.busy} onClick={requestProtection}>Retry storage protection</button></div>}
+        <ErrorBoundary key={route} title="Could not load this page">
         {route === 'home' && <HomePage navigate={navigate} startReview={startReview} />}
         {route === 'decks' && <DecksPage navigate={navigate} startReview={startReview} notify={notify} />}
         {route === 'add' && <AddPage navigate={navigate} notify={notify} />}
         {route === 'settings' && <SettingsPage notify={notify} onReset={resetOnboarding} />}
         {route === 'review' && <ReviewPage deckId={reviewDeckId} mode={reviewMode} onClose={() => navigate('home')} />}
+        </ErrorBoundary>
       </main>
       <BottomNav route={route} onNavigate={navigate} />
       <div className={`toast ${toast || updateAction ? 'is-visible' : ''}`} role="status" aria-live="polite">
