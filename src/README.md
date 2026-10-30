@@ -12,6 +12,7 @@
 - `components/Logo.tsx`: Lumen wordmark.
 - `components/Modal.tsx`: modal presentation and focus handling.
 - `components/Onboarding.tsx`: first-run choices.
+- `config/learning-report.json`: bundled instructions appended to learning reports.
 - `lib/dates.ts`: local-day, streak and date presentation helpers.
 - `lib/db.ts`: IndexedDB tables and record operations.
 - `lib/errors.ts`: storage-error messages.

@@ -8,7 +8,7 @@ import { EmptyState } from '../components/EmptyState'
 import { Modal } from '../components/Modal'
 import { db, deleteDeck } from '../lib/db'
 import { getSetting } from '../lib/db'
-import { downloadText, makeAnkiTsv, makeDeckPack, makeLearningReport, safeFilename, shareTextFile } from '../lib/importExport'
+import { downloadText, makeDeckExport, makeLearningReport, safeFilename, shareTextFile, type DeckExportFormat } from '../lib/importExport'
 import { startOfLocalDay } from '../lib/dates'
 import { hasNewCards, selectStudyQueue, type StudyMode } from '../lib/studyQueue'
 import type { CardRecord, DeckRecord, Route } from '../types'
@@ -139,15 +139,10 @@ function DeckMenu({ deck, notify, onDeleted }: { deck: DeckRecord; notify: Notic
     try { await action() } catch (error) { if (!(error instanceof Error && error.name === 'AbortError')) notify(storageError(error)) }
   }
 
-  async function exportLumen() {
-    const pack = await makeDeckPack(deck.id)
-    downloadText(JSON.stringify(pack, null, 2), `${safeFilename(deck.title)}.lumen.json`)
-    notify('Deck exported.')
-  }
-
-  async function exportAnki() {
-    downloadText(await makeAnkiTsv(deck.id), `${safeFilename(deck.title)}-anki.txt`, 'text/plain;charset=utf-8')
-    notify('Anki file exported.')
+  async function exportDeck(format: DeckExportFormat) {
+    const file = await makeDeckExport(deck, format)
+    downloadText(file.contents, file.filename, file.mimeType)
+    notify(file.successMessage)
   }
 
   async function shareReport() {
@@ -165,8 +160,8 @@ function DeckMenu({ deck, notify, onDeleted }: { deck: DeckRecord; notify: Notic
 
   return (
     <div className="popover-menu">
-      <button type="button" onClick={() => run(exportLumen)}><Download size={17} /> Export Lumen deck</button>
-      <button type="button" onClick={() => run(exportAnki)}><Download size={17} /> Export for Anki</button>
+      <button type="button" onClick={() => run(() => exportDeck('lumen'))}><Download size={17} /> Export Lumen deck</button>
+      <button type="button" onClick={() => run(() => exportDeck('anki'))}><Download size={17} /> Export for Anki</button>
       <button type="button" onClick={() => run(shareReport)}><Share2 size={17} /> Share learning report</button>
       <button className="danger" type="button" onClick={() => run(remove)}><Trash2 size={17} /> Delete deck</button>
     </div>

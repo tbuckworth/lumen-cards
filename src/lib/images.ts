@@ -3,9 +3,12 @@ import type { CardImageData, StoredImage } from '../types'
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 export const MAX_IMPORT_BYTES = 100 * 1024 * 1024
+const SUPPORTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const
+export const IMAGE_ACCEPT = SUPPORTED_IMAGE_TYPES.join(',')
+const imageDataPattern = new RegExp(`^data:(${SUPPORTED_IMAGE_TYPES.join('|')});base64,([A-Za-z0-9+/]+={0,2})$`)
 
 export function imageBlob(value: string): Blob {
-  const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value)
+  const match = imageDataPattern.exec(value)
   if (!match) throw new Error('Use an embedded PNG, JPEG or WebP image (data URI), not a URL or HTML.')
   if (match[2].length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4) throw new Error('Each image must be 10 MB or smaller.')
   let bytes: Uint8Array<ArrayBuffer>
@@ -16,11 +19,11 @@ export function imageBlob(value: string): Blob {
   } catch { throw new Error('The image contains invalid base64 data.') }
   if (bytes.length > MAX_IMAGE_BYTES) throw new Error('Each image must be 10 MB or smaller.')
   const starts = (...signature: number[]) => signature.every((byte, i) => bytes[i] === byte)
-  const valid = match[1] === 'png' ? starts(137, 80, 78, 71, 13, 10, 26, 10) && bytes.length >= 33
-    : match[1] === 'jpeg' ? starts(255, 216, 255) && bytes.length >= 16
+  const valid = match[1] === 'image/png' ? starts(137, 80, 78, 71, 13, 10, 26, 10) && bytes.length >= 33
+    : match[1] === 'image/jpeg' ? starts(255, 216, 255) && bytes.length >= 16
       : starts(82, 73, 70, 70) && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP' && bytes.length >= 20
   if (!valid) throw new Error('The image data does not match its PNG, JPEG or WebP type.')
-  return new Blob([bytes], { type: `image/${match[1]}` })
+  return new Blob([bytes], { type: match[1] })
 }
 
 export const imageSchema = z.string().superRefine((value, ctx) => {
@@ -66,6 +69,10 @@ export async function validateImage(blob: Blob): Promise<void> {
   finally { URL.revokeObjectURL(url) }
 }
 
+export function assembleContentKey(front: string, frontHash = '', backHash = ''): string {
+  return JSON.stringify([front.trim().replace(/\s+/g, ' ').toLowerCase(), frontHash, backHash])
+}
+
 export async function contentKey(front: string, frontImage?: CardImageData, backImage?: CardImageData): Promise<string> {
   const hashes: string[] = []
   for (const image of [frontImage, backImage]) {
@@ -74,7 +81,7 @@ export async function contentKey(front: string, frontImage?: CardImageData, back
     const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(uri))
     hashes.push(Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join(''))
   }
-  return JSON.stringify([front.trim().replace(/\s+/g, ' ').toLowerCase(), ...hashes])
+  return assembleContentKey(front, hashes[0], hashes[1])
 }
 
 export async function readImageFile(file: File): Promise<Blob> {

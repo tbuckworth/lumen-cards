@@ -1,4 +1,6 @@
 import '@testing-library/jest-dom/vitest'
+// Node/jsdom has no browser IndexedDB; emulate that boundary for real Dexie paths.
+// Playwright workflows in tests/e2e also exercise storage in real browsers.
 import 'fake-indexeddb/auto'
 
 if (!globalThis.crypto?.randomUUID) {

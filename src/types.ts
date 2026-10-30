@@ -1,5 +1,8 @@
 import type { Grade, State } from 'ts-fsrs'
 
+export const DECK_FORMAT = { format: 'lumen-deck', version: 1 } as const
+export const BACKUP_FORMAT = { format: 'lumen-backup', version: 1 } as const
+
 export type Route = 'home' | 'decks' | 'add' | 'settings' | 'review'
 
 export interface DeckRecord {
@@ -74,8 +77,8 @@ export interface LumenContentCard {
 }
 
 export interface LumenDeckPack {
-  format: 'lumen-deck'
-  version: 1
+  format: typeof DECK_FORMAT.format
+  version: typeof DECK_FORMAT.version
   createdAt?: string
   deck: {
     id?: string
@@ -95,6 +98,8 @@ export interface ImportResult {
 }
 
 export const DECK_COLORS = ['#ae765f', '#72806f', '#bf9856', '#76858e', '#8f7585'] as const
+
+export const RETENTION_BOUNDS = { min: 0.8, max: 0.95 } as const
 
 export const DEFAULT_SETTINGS = {
   onboardingComplete: false,

@@ -46,11 +46,12 @@ export async function setSetting(key: keyof typeof DEFAULT_SETTINGS, value: unkn
 export async function createDeck(
   title: string,
   description = '',
-  color = '#ae765f'
+  color = '#ae765f',
+  id = makeId('deck')
 ): Promise<DeckRecord> {
   const now = new Date().toISOString()
   const deck: DeckRecord = {
-    id: makeId('deck'),
+    id,
     title: title.trim(),
     description: description.trim(),
     color,
