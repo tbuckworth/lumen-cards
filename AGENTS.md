@@ -19,6 +19,8 @@ The instructions every coding agent in this repository follows. Codex reads this
 - `npm run test:e2e`: Playwright configured in `playwright.config.ts`.
 - `npm run check`: verification commands composed in `package.json`.
 
+Optional service-worker support is the narrow exception to no-silent-fallbacks: setup or update failures preserve local app use with persistent visible status and manual retry; required stored-data operations and imports have no such exception.
+
 <!-- claude-tooling: codex checklist review -->
 ## Checklist review (Codex)
 

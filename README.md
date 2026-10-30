@@ -10,7 +10,7 @@ Lumen is a calm, private flashcard app for iPhone and the web. It uses the moder
 2. Tap **Share**, then **Add to Home Screen**.
 3. Keep **Open as Web App** enabled and tap **Add**.
 
-There is no App Store purchase, developer account, login, API key, or subscription. After the first visit, the app works offline.
+There is no App Store purchase, developer account, login, API key, or subscription. Wait for **Ready offline** before using the app without a connection. Installing it on the Home Screen alone does not confirm offline readiness.
 
 ## What it does
 
@@ -71,6 +71,8 @@ npm run test:e2e
 ```
 
 The Playwright suite covers emulated iPhone WebKit, mobile Chromium, and desktop Chromium. It tests onboarding, FSRS review, persistence, Claude deck import, the PWA manifest, offline reload in browsers whose automation layer supports it, and automated accessibility checks.
+
+See the [offline fixture catalogue](tests/e2e/fixtures/CLAUDE.md) for the worker failure tests. WebKit offline network emulation remains unsupported; these tests do not establish physical-iPhone behavior.
 
 Pull requests and pushes to `main` run the same tests; pushes to `main` build a downloadable release artifact and deploy `dist/` to GitHub Pages only after they pass.
 
