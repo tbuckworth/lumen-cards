@@ -73,9 +73,9 @@ export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () 
   async function backup() {
     await write(() => backupAction.run(async () => {
       const contents = await makeBackup()
-      const lastBackup = await getSetting<string | null>('lastBackupAt')
       if (!mounted.current) return
       downloadText(contents, `lumen-backup-${new Date().toISOString().slice(0, 10)}.json`)
+      const lastBackup = new Date().toISOString()
       setSettings((current) => current && { ...current, lastBackup })
       notify('Backup downloaded. Keep it in iCloud Drive.')
     }))

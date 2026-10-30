@@ -293,6 +293,32 @@ describe('visible storage and action failures', () => {
     expect(await snapshot()).toEqual(before)
   })
 
+  it('delivers a generated backup without requiring a timestamp read', async () => {
+    await savedLibrary()
+    vi.stubGlobal('URL', NodeURL)
+    const notify = vi.fn()
+    render(<SettingsPage notify={notify} onReset={() => {}} />)
+    await screen.findByRole('slider')
+    // Native storage reads can fail independently of backup generation; fault only the optional timestamp key.
+    const original = IDBObjectStore.prototype.get
+    vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
+      if (this.name === 'settings' && key === 'lastBackupAt') throw new DOMException('Timestamp unavailable', 'UnknownError')
+      return original.call(this, key)
+    })
+    let contents: ReturnType<typeof resolveObjectURL>
+    // jsdom cannot open the native download dialog; inspect the real generated Blob at that boundary.
+    const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      contents = resolveObjectURL(this.href)
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Save a full backup/ }))
+    await waitFor(() => expect(download).toHaveBeenCalledTimes(1))
+    expect(JSON.parse((await contents?.text()) ?? '').cards[0].front).toBe('Keep this question')
+    expect(notify).toHaveBeenCalledWith('Backup downloaded. Keep it in iCloud Drive.')
+    expect(screen.queryByRole('alert')).toBeNull()
+    // Let the actual download helper release its object URL before restoring jsdom's URL implementation.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 1100)) })
+  })
+
   it('keeps restore failures visible and atomically preserves every record', async () => {
     await savedLibrary()
     const backup = JSON.parse(await makeBackup())
