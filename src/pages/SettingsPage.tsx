@@ -9,6 +9,7 @@ import { DEFAULT_SETTINGS, RETENTION_BOUNDS } from '../types'
 type Notice = (message: string) => void
 
 export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () => void }) {
+  const displayVersion = __APP_VERSION__.split('.').slice(0, 2).join('.')
   const [retention, setRetention] = useState(Math.round(DEFAULT_SETTINGS.desiredRetention * 100))
   const [dailyNew, setDailyNew] = useState(20)
   const [lastBackup, setLastBackup] = useState<string | null>(null)
@@ -130,7 +131,7 @@ export function SettingsPage({ notify, onReset }: { notify: Notice; onReset: () 
         </button>
       </section>
 
-      <footer className="app-footer"><span className="mini-sun" /> Lumen 1.3 · FSRS scheduling · made to last</footer>
+      <footer className="app-footer"><span className="mini-sun" /> Lumen {displayVersion} · FSRS scheduling · made to last</footer>
     </div>
   )
 }
