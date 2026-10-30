@@ -489,7 +489,6 @@ h1, h2 { font-family: var(--serif); font-weight: 500; letter-spacing: -0.025em; 
 
 .toast { position: fixed; z-index: 200; left: 50%; bottom: calc(88px + env(safe-area-inset-bottom)); max-width: calc(100% - 40px); display: flex; align-items: center; gap: 11px; padding: 8px 9px 8px 17px; transform: translate(-50%, 18px); border-radius: 999px; color: #fffaf1; background: rgba(41,39,34,0.94); box-shadow: 0 12px 30px rgba(34,29,23,0.2); opacity: 0; pointer-events: none; text-align: center; font-size: 0.76rem; transition: opacity 180ms ease, transform 180ms ease; }
 .toast.is-visible { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-.toast button { min-height: 34px; padding: 6px 11px; border: 0; border-radius: 999px; color: var(--ink); background: #fff8eb; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
 .route-review .toast { top: calc(66px + env(safe-area-inset-top)); bottom: auto; }
 .app-loading { min-height: 100dvh; display: grid; place-content: center; gap: 22px; background: var(--paper); }
 .loading-line { width: 80px; height: 2px; overflow: hidden; border-radius: 3px; background: var(--paper-deep); }

@@ -72,7 +72,7 @@ npm run test:e2e
 
 The Playwright suite covers emulated iPhone WebKit, mobile Chromium, and desktop Chromium. It tests onboarding, FSRS review, persistence, Claude deck import, the PWA manifest, offline reload in browsers whose automation layer supports it, and automated accessibility checks.
 
-Offline failures have a persistent status and manual retry; local cards stay available. **Update now** reloads only after the requested worker activates. `tests/e2e/offline-status.spec.ts` uses a local HTTP fixture serving the real build/Workbox worker with deterministic script/precache failures and changed worker revisions. Its test-only mounting build exercises StrictMode and unmount cleanup without adding hooks to the normal build. WebKit offline network emulation remains unsupported; these tests do not establish physical-iPhone behavior.
+See the [offline fixture catalogue](tests/e2e/fixtures/CLAUDE.md) for the worker failure tests. WebKit offline network emulation remains unsupported; these tests do not establish physical-iPhone behavior.
 
 Pull requests and pushes to `main` run the same tests; pushes to `main` build a downloadable release artifact and deploy `dist/` to GitHub Pages only after they pass.
 
