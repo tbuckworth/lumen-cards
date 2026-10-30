@@ -4,3 +4,7 @@ test-results/
 playwright-report/
 .DS_Store
 *.local
+.venv/
+.claude/settings.local.json
+.claude/reviews/
+.claude/worktrees/
