@@ -1,6 +1,6 @@
 import { ArchiveRestore, Brain, CloudOff, Database, Download, HardDrive, Share2, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { storageError } from '../lib/images'
+import { storageError } from '../lib/errors'
 import { InstallGuide } from '../components/InstallGuide'
 import { getSetting, resetDatabase, setSetting } from '../lib/db'
 import { downloadText, makeBackup, makeLearningReport, restoreBackup, shareTextFile } from '../lib/importExport'

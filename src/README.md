@@ -1,0 +1,26 @@
+# Application modules
+
+- `main.tsx`: mounts the React application.
+- `App.tsx`: coordinates routes, onboarding and application notifications.
+- `types.ts`: stored records, interchange types and initial settings.
+- `styles.css`: application styles and theme tokens.
+- `vite-env.d.ts`: Vite client type declarations.
+- `components/BottomNav.tsx`: route navigation.
+- `components/CardImage.tsx`: image display, enlargement and file input.
+- `components/EmptyState.tsx`: shared empty-state presentation.
+- `components/InstallGuide.tsx`: installation instructions.
+- `components/Logo.tsx`: Lumen wordmark.
+- `components/Modal.tsx`: modal presentation and focus handling.
+- `components/Onboarding.tsx`: first-run choices.
+- `lib/dates.ts`: local-day, streak and date presentation helpers.
+- `lib/db.ts`: IndexedDB tables and record operations.
+- `lib/errors.ts`: storage-error messages.
+- `lib/images.ts`: image validation, storage and matching keys.
+- `lib/importExport.ts`: deck interchange, backups and learning reports.
+- `lib/scheduler.ts`: FSRS configuration and review calculations.
+- `lib/studyQueue.ts`: study eligibility and session order.
+- `pages/AddPage.tsx`: card creation and deck import.
+- `pages/DecksPage.tsx`: deck browsing, editing and export.
+- `pages/HomePage.tsx`: daily study summary.
+- `pages/ReviewPage.tsx`: grading and undo within a study session.
+- `pages/SettingsPage.tsx`: preferences, backups and storage controls.

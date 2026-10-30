@@ -1,5 +1,5 @@
 import { CardImage } from '../components/CardImage'
-import { storageError } from '../lib/images'
+import { storageError } from '../lib/errors'
 import { ArrowLeft, Check, RotateCcw, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Rating, State, type Grade } from 'ts-fsrs'
