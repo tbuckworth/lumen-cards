@@ -1,11 +1,13 @@
 import { ArrowRight, CloudOff, Sparkles } from 'lucide-react'
 import { Logo } from './Logo'
+import { useAsyncAction } from '../hooks/useAsyncAction'
 
 export function Onboarding({
   onFinish
 }: {
   onFinish: (withSample: boolean) => Promise<void>
 }) {
+  const { busy, error, run } = useAsyncAction()
   return (
     <div className="onboarding">
       <div className="onboarding__glow" aria-hidden="true" />
@@ -26,10 +28,12 @@ export function Onboarding({
             <span><strong>Yours alone</strong>Your cards stay on this device and work offline.</span>
           </div>
         </div>
-        <button className="button button--primary button--full" type="button" onClick={() => onFinish(true)}>
+        {error && <p role="alert">Could not finish setup: {error}</p>}
+        {busy && <p role="status">Setting up your library…</p>}
+        <button className="button button--primary button--full" type="button" disabled={busy} onClick={() => run(() => onFinish(true))}>
           Begin with three sample cards <ArrowRight size={18} />
         </button>
-        <button className="button button--quiet button--full" type="button" onClick={() => onFinish(false)}>
+        <button className="button button--quiet button--full" type="button" disabled={busy} onClick={() => run(() => onFinish(false))}>
           Start with an empty library
         </button>
       </main>
