@@ -1,8 +1,8 @@
 import { FileJson, FileUp, Plus, Sparkles } from 'lucide-react'
 import { useState, useRef } from 'react'
-import { ImageField } from '../components/CardImage'
+import { CardContentFields, useCardDraft } from '../components/CardContentFields'
+import { useAsyncAction } from '../hooks/useAsyncAction'
 import { contentKey, storeImage } from '../lib/images'
-import { storageError } from '../lib/errors'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { createCard, createDeck, db } from '../lib/db'
 import { checkDeckSize, importContentCards, importDeckPack, parseDeckJson, parseTabularCards, restoreBackup } from '../lib/importExport'
@@ -15,18 +15,17 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
   const [mode, setMode] = useState<'card' | 'import'>('card')
   const [deckId, setDeckId] = useState('')
   const [newDeckTitle, setNewDeckTitle] = useState('')
-  const [frontImage, setFrontImage] = useState<Blob>()
-  const [backImage, setBackImage] = useState<Blob>()
+  const { draft, updateDraft, resetDraft, canSave } = useCardDraft()
+  const { front, back, notes, tags, source, frontImage, backImage } = draft
   const [imageBusy, setImageBusy] = useState(false)
-  const [error, setError] = useState('')
-  const lock = useRef(false)
-  const [front, setFront] = useState('')
-  const [back, setBack] = useState('')
-  const [notes, setNotes] = useState('')
-  const [tags, setTags] = useState('')
-  const [source, setSource] = useState('')
+  const imageBusyRef = useRef(false)
+  const { busy, error, run } = useAsyncAction(() => imageBusyRef.current)
   const [paste, setPaste] = useState('')
-  const [busy, setBusy] = useState(false)
+
+  function onImageBusyChange(value: boolean) {
+    imageBusyRef.current = value
+    setImageBusy(value)
+  }
 
   const effectiveDeckId = deckId || decks[0]?.id || ''
 
@@ -45,11 +44,7 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
 
   async function addCard(event: React.FormEvent) {
     event.preventDefault()
-    if (lock.current || imageBusy) return
-    lock.current = true
-    setBusy(true)
-    setError('')
-    try {
+    await run(async () => {
       const key = await contentKey(front, frontImage, backImage)
       const storedFront = await storeImage(frontImage)
       const storedBack = await storeImage(backImage)
@@ -64,20 +59,9 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
       })
       setDeckId(target)
       setNewDeckTitle('')
-      setFrontImage(undefined)
-      setBackImage(undefined)
-      setFront('')
-      setBack('')
-      setNotes('')
-      setTags('')
-      setSource('')
+      resetDraft()
       notify('Card added.')
-    } catch (error) {
-      setError(storageError(error))
-    } finally {
-      lock.current = false
-      setBusy(false)
-    }
+    })
   }
 
   async function importRaw(raw: string, filename = '') {
@@ -107,38 +91,20 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
   }
 
   async function importPasted() {
-    if (lock.current || imageBusy) return
-    lock.current = true
-    setBusy(true)
-    setError('')
-    try {
+    await run(async () => {
       notify(await importRaw(paste))
       setPaste('')
       navigate('decks')
-    } catch (error) {
-      setError(storageError(error))
-    } finally {
-      lock.current = false
-      setBusy(false)
-    }
+    })
   }
 
   async function importFile(file?: File) {
     if (!file) return
-    if (lock.current || imageBusy) return
-    lock.current = true
-    setBusy(true)
-    setError('')
-    try {
+    await run(async () => {
       checkDeckSize(file)
       notify(await importRaw(await file.text(), file.name.toLowerCase()))
       navigate('decks')
-    } catch (error) {
-      setError(storageError(error))
-    } finally {
-      lock.current = false
-      setBusy(false)
-    }
+    })
   }
 
   return (
@@ -154,17 +120,8 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
       {mode === 'card' ? (
         <form className="stack-form add-card-form" onSubmit={addCard}>
           <DeckChooser decks={decks} deckId={effectiveDeckId} setDeckId={setDeckId} newDeckTitle={newDeckTitle} setNewDeckTitle={setNewDeckTitle} />
-          <label>Question or prompt<textarea autoFocus value={front} onChange={(event) => setFront(event.target.value)} placeholder="What do I want to remember?" required={!frontImage} /></label>
-          <ImageField side="Front" image={frontImage} onChange={setFrontImage} disabled={busy || imageBusy} onBusy={setImageBusy} />
-          <label>Answer<textarea value={back} onChange={(event) => setBack(event.target.value)} placeholder="Keep it clear and atomic" required={!backImage} /></label>
-          <ImageField side="Back" image={backImage} onChange={setBackImage} disabled={busy || imageBusy} onBusy={setImageBusy} />
-          <details className="form-details">
-            <summary>Notes, tags & source</summary>
-            <label>Extra note<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Context or a helpful explanation" /></label>
-            <label>Tags<input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="paper, methods" /></label>
-            <label>Source<input value={source} onChange={(event) => setSource(event.target.value)} placeholder="Paper, book, or URL" /></label>
-          </details>
-          <button className="button button--primary button--full" type="submit" disabled={busy || imageBusy || (!front.trim() && !frontImage) || (!back.trim() && !backImage)}>
+          <CardContentFields draft={draft} onChange={updateDraft} mode="create" disabled={busy || imageBusy} onImageBusyChange={onImageBusyChange} />
+          <button className="button button--primary button--full" type="submit" disabled={busy || imageBusy || !canSave}>
             <Plus size={18} /> Add card
           </button>
         </form>

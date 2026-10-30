@@ -1,6 +1,8 @@
 import { Archive, Download, MoreHorizontal, Pause, Pencil, Play, Search, Share2, Trash2 } from 'lucide-react'
 import { useMemo, useState, useRef } from 'react'
-import { CardImage, ImageField } from '../components/CardImage'
+import { CardImage } from '../components/CardImage'
+import { CardContentFields, useCardDraft } from '../components/CardContentFields'
+import { useAsyncAction } from '../hooks/useAsyncAction'
 import { contentKey, storeImage } from '../lib/images'
 import { storageError } from '../lib/errors'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -169,28 +171,20 @@ function DeckMenu({ deck, notify, onDeleted }: { deck: DeckRecord; notify: Notic
 }
 
 function EditCardModal({ card, onClose, notify }: { card: CardRecord; onClose: () => void; notify: Notice }) {
-  const [frontImage, setFrontImage] = useState(card.frontImage)
-  const [backImage, setBackImage] = useState(card.backImage)
-  const [busy, setBusy] = useState(false)
+  const { draft, updateDraft, canSave } = useCardDraft(card)
+  const { front, back, notes, tags, frontImage, backImage } = draft
   const [imageBusy, setImageBusy] = useState(false)
-  const [error, setError] = useState('')
-  const lock = useRef(false)
-  async function run(action: () => Promise<void>) {
-    if (lock.current) return
-    lock.current = true
-    setBusy(true)
-    setError('')
-    try { await action() } catch (error) { setError(storageError(error)) }
-    finally { lock.current = false; setBusy(false) }
+  const imageBusyRef = useRef(false)
+  const { busy, error, run } = useAsyncAction(() => imageBusyRef.current)
+
+  function onImageBusyChange(value: boolean) {
+    imageBusyRef.current = value
+    setImageBusy(value)
   }
-  const [front, setFront] = useState(card.front)
-  const [back, setBack] = useState(card.back)
-  const [notes, setNotes] = useState(card.notes)
-  const [tags, setTags] = useState(card.tags.join(', '))
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
-    if ((!front.trim() && !frontImage) || (!back.trim() && !backImage) || imageBusy) return
+    if (!canSave) return
     await run(async () => {
       await db.cards.update(card.id, {
         frontImage: await storeImage(frontImage), backImage: await storeImage(backImage), contentKey: await contentKey(front, frontImage, backImage),
@@ -222,15 +216,10 @@ function EditCardModal({ card, onClose, notify }: { card: CardRecord; onClose: (
   }
 
   return (
-    <Modal title="Edit card" onClose={() => { if (!busy && !imageBusy) onClose() }}>
+    <Modal title="Edit card" onClose={() => { if (!busy && !imageBusyRef.current) onClose() }}>
       {error && <p role="alert">{error}</p>}
       <form className="stack-form" onSubmit={save}>
-        <label>Front<textarea value={front} onChange={(event) => setFront(event.target.value)} required={!frontImage} /></label>
-        <ImageField side="Front" image={frontImage} onChange={setFrontImage} disabled={busy || imageBusy} onBusy={setImageBusy} />
-        <label>Back<textarea value={back} onChange={(event) => setBack(event.target.value)} required={!backImage} /></label>
-        <ImageField side="Back" image={backImage} onChange={setBackImage} disabled={busy || imageBusy} onBusy={setImageBusy} />
-        <label>Extra note<textarea value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
-        <label>Tags<input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="paper, methods" /></label>
+        <CardContentFields draft={draft} onChange={updateDraft} mode="edit" disabled={busy || imageBusy} onImageBusyChange={onImageBusyChange} />
         <button className="button button--primary button--full" type="submit" disabled={busy || imageBusy}>Save card</button>
       </form>
       <div className="modal-actions">
