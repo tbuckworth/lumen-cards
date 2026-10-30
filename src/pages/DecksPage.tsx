@@ -1,5 +1,5 @@
 import { Archive, Download, MoreHorizontal, Pause, Pencil, Play, Search, Share2, Trash2 } from 'lucide-react'
-import { useMemo, useState, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import { CardImage } from '../components/CardImage'
 import { CardContentFields, useCardDraft } from '../components/CardContentFields'
 import { useAsyncAction } from '../hooks/useAsyncAction'
@@ -171,16 +171,9 @@ function DeckMenu({ deck, notify, onDeleted }: { deck: DeckRecord; notify: Notic
 }
 
 function EditCardModal({ card, onClose, notify }: { card: CardRecord; onClose: () => void; notify: Notice }) {
-  const { draft, updateDraft, canSave } = useCardDraft(card)
+  const { draft, updateDraft, canSave, imageBusy, isImageBusy, onImageBusyChange } = useCardDraft(card)
   const { front, back, notes, tags, frontImage, backImage } = draft
-  const [imageBusy, setImageBusy] = useState(false)
-  const imageBusyRef = useRef(false)
-  const { busy, error, run } = useAsyncAction(() => imageBusyRef.current)
-
-  function onImageBusyChange(value: boolean) {
-    imageBusyRef.current = value
-    setImageBusy(value)
-  }
+  const { busy, error, run } = useAsyncAction(isImageBusy)
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
@@ -216,7 +209,7 @@ function EditCardModal({ card, onClose, notify }: { card: CardRecord; onClose: (
   }
 
   return (
-    <Modal title="Edit card" onClose={() => { if (!busy && !imageBusyRef.current) onClose() }}>
+    <Modal title="Edit card" onClose={() => { if (!busy && !isImageBusy()) onClose() }}>
       {error && <p role="alert">{error}</p>}
       <form className="stack-form" onSubmit={save}>
         <CardContentFields draft={draft} onChange={updateDraft} mode="edit" disabled={busy || imageBusy} onImageBusyChange={onImageBusyChange} />

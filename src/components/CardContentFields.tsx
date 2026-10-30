@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { ImageField } from './CardImage'
 import type { CardImageData, CardRecord } from '../types'
 
@@ -21,10 +21,17 @@ export function useCardDraft(initial?: CardDraftSeed) {
     frontImage: initial?.frontImage, backImage: initial?.backImage
   }))
   const [draft, setDraft] = useState(seed)
+  const [imageBusy, setImageBusy] = useState(false)
+  const imageBusyRef = useRef(imageBusy)
+  const isImageBusy = useCallback(() => imageBusyRef.current, [])
+  const onImageBusyChange = useCallback((value: boolean) => {
+    imageBusyRef.current = value
+    setImageBusy(value)
+  }, [])
   const updateDraft = (patch: Partial<CardDraft>) => setDraft((previous) => ({ ...previous, ...patch }))
   const resetDraft = () => setDraft(seed)
   const canSave = Boolean((draft.front.trim() || draft.frontImage) && (draft.back.trim() || draft.backImage))
-  return { draft, updateDraft, resetDraft, canSave }
+  return { draft, updateDraft, resetDraft, canSave, imageBusy, isImageBusy, onImageBusyChange }
 }
 
 export function CardContentFields({ draft, onChange, mode, disabled, onImageBusyChange }: {

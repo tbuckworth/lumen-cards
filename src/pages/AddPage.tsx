@@ -1,5 +1,5 @@
 import { FileJson, FileUp, Plus, Sparkles } from 'lucide-react'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { CardContentFields, useCardDraft } from '../components/CardContentFields'
 import { useAsyncAction } from '../hooks/useAsyncAction'
 import { contentKey, storeImage } from '../lib/images'
@@ -15,17 +15,10 @@ export function AddPage({ navigate, notify }: { navigate: (route: Route) => void
   const [mode, setMode] = useState<'card' | 'import'>('card')
   const [deckId, setDeckId] = useState('')
   const [newDeckTitle, setNewDeckTitle] = useState('')
-  const { draft, updateDraft, resetDraft, canSave } = useCardDraft()
+  const { draft, updateDraft, resetDraft, canSave, imageBusy, isImageBusy, onImageBusyChange } = useCardDraft()
   const { front, back, notes, tags, source, frontImage, backImage } = draft
-  const [imageBusy, setImageBusy] = useState(false)
-  const imageBusyRef = useRef(false)
-  const { busy, error, run } = useAsyncAction(() => imageBusyRef.current)
+  const { busy, error, run } = useAsyncAction(isImageBusy)
   const [paste, setPaste] = useState('')
-
-  function onImageBusyChange(value: boolean) {
-    imageBusyRef.current = value
-    setImageBusy(value)
-  }
 
   const effectiveDeckId = deckId || decks[0]?.id || ''
 
