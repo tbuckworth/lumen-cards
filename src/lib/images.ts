@@ -38,6 +38,7 @@ export function asBlob(image: CardImageData): Blob {
 
 // WebKit can reject Blob writes in ephemeral/private storage. Raw bytes retain the
 // same compact, offline representation without relying on its Blob file backend.
+// Browser reports: https://bugs.webkit.org/show_bug.cgi?id=188438
 export async function storeImage(image?: CardImageData): Promise<StoredImage | undefined> {
   if (!image) return undefined
   return image instanceof Blob ? { type: image.type, data: await image.arrayBuffer() } : image
