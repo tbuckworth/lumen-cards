@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 
 test('onboards, reviews a sample deck, and persists progress', async ({ page }) => {
   await page.goto('./')
@@ -56,6 +58,27 @@ test('has a complete installable PWA manifest', async ({ page }) => {
   expect(manifest.display).toBe('standalone')
   expect(manifest.icons).toHaveLength(3)
   expect(manifest.start_url).toBe('/lumen-cards/')
+  expect(manifest.scope).toBe('/lumen-cards/')
+  expect(manifest.id).toBe('/lumen-cards/')
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/lumen-cards/favicon.svg')
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/lumen-cards/apple-touch-icon.png')
+
+  const provenance = await page.evaluate(async () => (await fetch(new URL('build-provenance.json', document.baseURI))).json())
+  const packageInfo = JSON.parse(readFileSync('package.json', 'utf8'))
+  expect(provenance.source.revision).toBe(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim())
+  expect(provenance.source.dirty).toBe(Boolean(execFileSync('git', ['status', '--porcelain', '--untracked-files=normal'], { encoding: 'utf8' }).trim()))
+  expect(provenance.version).toBe(packageInfo.version)
+  expect(provenance.runtime.node).toMatch(/^v\d+\.\d+\.\d+$/)
+  expect(provenance.build).toMatchObject({ mode: 'production', base: '/lumen-cards/', production: true })
+  expect(Object.keys(provenance.configuration).sort()).toEqual([
+    'package-lock.json', 'package.json', 'tsconfig.app.json', 'tsconfig.json', 'tsconfig.node.json', 'vite.config.ts'
+  ])
+  for (const [file, contents] of Object.entries(provenance.configuration)) {
+    expect(contents).toBe(readFileSync(file, 'utf8'))
+  }
+  await page.getByRole('button', { name: 'Start with an empty library' }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(page.locator('.app-footer')).toContainText(`Lumen ${packageInfo.version.split('.').slice(0, 2).join('.')}`)
 })
 
 test('reloads from its cache while offline', async ({ page, context, browserName }) => {
