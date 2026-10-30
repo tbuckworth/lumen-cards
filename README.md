@@ -14,14 +14,9 @@ There is no App Store purchase, developer account, login, API key, or subscripti
 
 ## What it does
 
-- Schedules reviews with [FSRS](https://github.com/open-spaced-repetition/ts-fsrs), with adjustable desired retention and a daily new-card allowance for each deck. When nothing is due, **Study ahead** on Today or a deck lets you continue with remaining unseen cards without changing your settings or bringing future reviews forward.
-- Shows the day’s new cards before reviews, and shuffles each session so the order of the cards gives nothing away. Which cards are due, and when they return, is still decided by FSRS alone.
+- Schedules reviews with [FSRS](https://github.com/open-spaced-repetition/ts-fsrs). See [Studying](docs/image-decks.md#studying) for daily allowances, session order and **Study ahead**.
 - Creates, edits, pauses, deletes, searches, and studies cards in separate decks.
-- Displays embedded PNG, JPEG and WebP images on either side, including image-only cards, with tap-to-enlarge viewing.
-- Keeps repeated prompts with different images distinct and preserves images in deck exports and full backups. See the [image-deck guide](docs/image-decks.md).
-- Imports Lumen JSON, Claude's compact JSON shape, CSV, TSV, and Anki **Notes in Plain Text** exports.
-- Exports Lumen decks or Anki-compatible UTF-8 tab-separated text.
-- Saves a complete backup containing decks, cards, FSRS state, and review history.
+- Supports image cards, portable deck imports and exports, and full backups. See the [deck guide](docs/image-decks.md).
 - Shares a learning report containing repeatedly missed cards back to Claude through the iPhone share sheet.
 - Installs as a standalone PWA and precaches the complete interface for offline use.
 
@@ -44,12 +39,7 @@ Cards and review history live in IndexedDB on the current device and origin. Lum
 
 There is no analytics, advertising, remote database, account system, or application secret. The static site is public; the user's cards are not.
 
-### Current boundaries
-
-- No automatic cross-device sync. That would require accounts and a maintained backend, which conflicts with the free, zero-maintenance first version.
-- No server-driven reminders. iPhone web push requires a push service; opening Lumen shows everything due.
-- No direct `.apkg` parser. In Anki, export **Notes in Plain Text**, then import the resulting `.txt` file into Lumen. Lumen can export the same documented text format back to Anki.
-- Audio and direct HEIC/SVG/GIF imports are not supported. Images use embedded PNG, JPEG or WebP in Lumen JSON; Anki text export cannot carry these images.
+Lumen has no automatic cross-device sync or server-driven reminders; opening the app shows everything due. See [Importing](docs/image-decks.md#importing) for file formats and media limits.
 
 ## Development
 
