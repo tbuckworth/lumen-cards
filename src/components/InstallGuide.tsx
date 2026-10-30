@@ -11,9 +11,9 @@ export function InstallGuide() {
       <span className="panel__icon"><Smartphone size={21} /></span>
       <div>
         <p className="eyebrow">iPhone setup</p>
-        <h2>{installed ? 'Installed and ready' : 'Put Lumen on your Home Screen'}</h2>
+        <h2>{installed ? 'Installed on this device' : 'Put Lumen on your Home Screen'}</h2>
         {installed ? (
-          <p className="muted"><Check size={16} /> Lumen is open as an app. It will keep working without a connection.</p>
+          <p className="muted"><Check size={16} /> Lumen is open as an app. Check the offline status before using it without a connection.</p>
         ) : (
           <ol>
             <li>Open this page in <strong>Safari</strong>.</li>

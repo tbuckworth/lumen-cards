@@ -6,6 +6,7 @@
 - `styles.css`: application styles and theme tokens.
 - `vite-env.d.ts`: Vite client type declarations.
 - `components/BottomNav.tsx`: route navigation.
+- `components/AppNotice.tsx`: persistent application status and retry presentation.
 - `components/CardContentFields.tsx`: shared create/edit card fields and draft state.
 - `components/CardImage.tsx`: image display, enlargement and file input.
 - `components/EmptyState.tsx`: shared empty-state presentation.
@@ -16,9 +17,10 @@
 - `components/Onboarding.tsx`: first-run choices.
 - `config/learning-report.json`: bundled instructions appended to learning reports.
 - `hooks/useAsyncAction.ts`: immediate action locking, busy state and visible errors.
+- `hooks/useOfflineSupport.ts`: optional worker registration, installation, update checks and confirmed update activation.
 - `lib/dates.ts`: local-day, streak and date presentation helpers.
 - `lib/db.ts`: IndexedDB tables and record operations.
-- `lib/errors.ts`: storage-error messages.
+- `lib/errors.ts`: browser error diagnostics and storage-error messages.
 - `lib/images.ts`: image validation, storage and matching keys.
 - `lib/importExport.ts`: deck interchange, backups and learning reports.
 - `lib/scheduler.ts`: FSRS configuration and review calculations.

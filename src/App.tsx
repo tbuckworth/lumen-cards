@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { registerSW } from 'virtual:pwa-register'
+import { AppNotice } from './components/AppNotice'
 import { BottomNav } from './components/BottomNav'
 import { Logo } from './components/Logo'
 import { Onboarding } from './components/Onboarding'
@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { db, getSetting, seedSampleDeck, setSetting } from './lib/db'
 import { storageError } from './lib/errors'
 import { useAsyncAction } from './hooks/useAsyncAction'
+import { useOfflineSupport } from './hooks/useOfflineSupport'
 import type { StudyMode } from './lib/studyQueue'
 import { AddPage } from './pages/AddPage'
 import { DecksPage } from './pages/DecksPage'
@@ -32,7 +33,6 @@ export default function App() {
   const [reviewDeckId, setReviewDeckId] = useState<string | undefined>()
   const [reviewMode, setReviewMode] = useState<StudyMode>('due')
   const [toast, setToast] = useState('')
-  const [updateAction, setUpdateAction] = useState<(() => void) | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
   const mounted = useRef(false)
 
@@ -46,6 +46,7 @@ export default function App() {
     setToast(message)
     toastTimer.current = window.setTimeout(() => setToast(''), duration)
   }, [])
+  const offline = useOfflineSupport(notify)
 
   useEffect(() => {
     let current = true
@@ -61,25 +62,8 @@ export default function App() {
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash())
     window.addEventListener('hashchange', onHash)
-    let registration: ServiceWorkerRegistration | undefined
-    const checkUpdate = () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) void registration?.update().catch(() => {})
-    }
-    document.addEventListener('visibilitychange', checkUpdate)
-    const updateSW = registerSW({
-      onRegisteredSW: (_url, value) => { registration = value; checkUpdate() },
-      onOfflineReady: () => notify('Lumen is ready offline.'),
-      onNeedRefresh: () => {
-        setUpdateAction(() => () => {
-          setUpdateAction(null)
-          void updateSW(true)
-        })
-        notify('An update is ready.', 12_000)
-      },
-      onRegisterError: () => notify('Offline setup could not finish. Lumen still works while connected.')
-    })
-    return () => { window.removeEventListener('hashchange', onHash); document.removeEventListener('visibilitychange', checkUpdate) }
-  }, [notify])
+    return () => { window.removeEventListener('hashchange', onHash) }
+  }, [])
 
   const navigate = useCallback((next: Route) => {
     if (next === 'review') return
@@ -113,18 +97,27 @@ export default function App() {
     navigate('home')
   }
 
-  if (!ready) return <div className="app-loading"><Logo />{startupError ? <>
+  const showOffline = offline.needsAttention || !onboardingComplete || route === 'settings'
+  const notices = (showOffline || protection.error) && <div className="app-notices">
+    {showOffline && <AppNotice label="Offline status" message={offline.message} error={offline.error} busy={offline.busy}
+      retryLabel={offline.retryLabel} onRetry={offline.retry}>
+      {offline.updateAvailable && <button className="text-button" type="button" disabled={offline.busy} onClick={offline.apply}>Update now</button>}
+    </AppNotice>}
+    {protection.error && <AppNotice label="Storage protection" error={`Storage protection could not be requested: ${protection.error}`}
+      busy={protection.busy} retryLabel="Retry storage protection" onRetry={requestProtection} />}
+  </div>
+
+  if (!ready) return <>{notices}<div className="app-loading"><Logo />{startupError ? <>
     <p role="alert">Could not open your library: {startupError}</p>
     <button className="button button--primary" type="button" onClick={() => setStartupAttempt((attempt) => attempt + 1)}>Retry</button>
-  </> : <span className="loading-line" />}</div>
-  if (!onboardingComplete) return <Onboarding onFinish={finishOnboarding} />
+  </> : <span className="loading-line" />}</div></>
+  if (!onboardingComplete) return <>{notices}<Onboarding onFinish={finishOnboarding} /></>
 
   return (
     <div className={`app-shell route-${route}`}>
       {route !== 'review' && <header className="desktop-brand"><Logo /></header>}
       <main className="app-main">
-        {protection.error && <div><p role="alert">Storage protection could not be requested: {protection.error}</p>
-          <button type="button" disabled={protection.busy} onClick={requestProtection}>Retry storage protection</button></div>}
+        {notices}
         <ErrorBoundary key={route} title="Could not load this page">
         {route === 'home' && <HomePage navigate={navigate} startReview={startReview} />}
         {route === 'decks' && <DecksPage navigate={navigate} startReview={startReview} notify={notify} />}
@@ -134,9 +127,8 @@ export default function App() {
         </ErrorBoundary>
       </main>
       <BottomNav route={route} onNavigate={navigate} />
-      <div className={`toast ${toast || updateAction ? 'is-visible' : ''}`} role="status" aria-live="polite">
-        <span>{toast || (updateAction ? 'An update is ready.' : '')}</span>
-        {updateAction && <button type="button" onClick={updateAction}>Update now</button>}
+      <div className={`toast ${toast ? 'is-visible' : ''}`} role="status" aria-live="polite">
+        <span>{toast}</span>
       </div>
     </div>
   )
