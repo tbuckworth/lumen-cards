@@ -2,7 +2,7 @@ import Papa from 'papaparse'
 import { blobDataUri, contentKey, imageBlob, imageSchema, MAX_IMPORT_BYTES, validateImage, storeImage } from './images'
 import { z } from 'zod'
 import { Rating } from 'ts-fsrs'
-import { createCard, createDeck, db, makeId, setSetting } from './db'
+import { createCard, createDeck, db, setSetting } from './db'
 import type {
   CardRecord,
   DeckRecord,
@@ -481,6 +481,3 @@ export async function shareTextFile(
   return 'downloaded'
 }
 
-export function makeReviewId(): string {
-  return makeId('review')
-}

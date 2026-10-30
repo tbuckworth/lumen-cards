@@ -3,9 +3,8 @@ import { storageError } from '../lib/images'
 import { ArrowLeft, Check, RotateCcw, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Rating, State, type Grade } from 'ts-fsrs'
-import { db, getSetting } from '../lib/db'
+import { db, getSetting, makeId } from '../lib/db'
 import { startOfLocalDay } from '../lib/dates'
-import { makeReviewId } from '../lib/importExport'
 import { formatInterval, previewRatings, RATINGS, RATING_LABELS, scheduleReview, serializeFsrsCard } from '../lib/scheduler'
 import { selectStudyQueue, shuffleStudyQueue, type StudyMode } from '../lib/studyQueue'
 import type { CardRecord } from '../types'
@@ -58,7 +57,7 @@ export function ReviewPage({ deckId, mode = 'due', onClose }: { deckId?: string;
       const now = new Date()
       const result = scheduleReview(current, rating, now, retention)
       const stored = serializeFsrsCard(result.card)
-      const reviewId = makeReviewId()
+      const reviewId = makeId('review')
       await db.transaction('rw', db.cards, db.reviews, async () => {
         const latest = await db.cards.get(current.id)
         if (!latest || latest.updatedAt !== current.updatedAt) throw new Error('This card changed in another window. End this review and start again to load the latest version.')

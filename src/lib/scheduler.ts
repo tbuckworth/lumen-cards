@@ -75,6 +75,3 @@ export function formatInterval(due: Date, from = new Date()): string {
   return `${Math.round(days / 365.25)}y`
 }
 
-export function isDue(card: CardRecord, at = new Date()): boolean {
-  return !card.suspended && new Date(card.due).getTime() <= at.getTime()
-}
