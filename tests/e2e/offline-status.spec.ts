@@ -212,7 +212,10 @@ test('applying waits for actual activation, retains failures, and reloads once a
   await expect(status.getByRole('alert')).toContainText('has not finished')
   expect(navigations).toBe(0)
   await page.evaluate(() => { (window as unknown as TestWindow).offlineProbe.delivery = '' })
-  await status.getByRole('button', { name: 'Retry update', exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click() })
+  await Promise.all([
+    page.waitForEvent('load'),
+    status.getByRole('button', { name: 'Retry update', exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click() })
+  ])
   await expect.poll(() => navigations).toBe(1)
   expect(await page.evaluate(() => sessionStorage.getItem('fixture-confirmed-activation'))).toBe('true')
   await ready(page)
@@ -251,7 +254,10 @@ test('a redundant requested worker leaves the newer real update retryable', asyn
   await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())!.update() })
   await expect(status.getByRole('alert')).toContainText('requested update became redundant')
   await page.evaluate(() => { (window as unknown as TestWindow).offlineProbe.delivery = '' })
-  await status.getByRole('button', { name: 'Retry update', exact: true }).click()
+  await Promise.all([
+    page.waitForEvent('load'),
+    status.getByRole('button', { name: 'Retry update', exact: true }).click()
+  ])
   await ready(page)
 })
 
@@ -277,7 +283,10 @@ test('late activation after a timeout requires an explicit reload', async ({ pag
   await expect(status.getByRole('button', { name: 'Reload app' })).toBeVisible()
   await expect(status.getByRole('alert')).toContainText('has not finished')
   expect(navigations).toBe(0)
-  await status.getByRole('button', { name: 'Reload app' }).click()
+  await Promise.all([
+    page.waitForEvent('load'),
+    status.getByRole('button', { name: 'Reload app' }).click()
+  ])
   await ready(page)
   expect(navigations).toBe(1)
 })
