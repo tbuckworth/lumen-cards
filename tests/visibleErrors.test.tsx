@@ -16,7 +16,7 @@ function browserApi(name: string, value: unknown) {
 }
 
 // Inject only browser/IndexedDB failures: native quota, device I/O and OS dialogs cannot be forced safely in Node CI.
-function failSettingWrite(key: string, message: string, name = 'QuotaExceededError') {
+function failSettingWrite(key: string, message: string, name: string) {
   const original = IDBObjectStore.prototype.put
   return vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, value, ...args) {
     if (this.name === 'settings' && value.key === key) throw new DOMException(message, name)
@@ -145,7 +145,7 @@ describe('visible storage and action failures', () => {
   })
 
   it('rolls back onboarding samples and completion together and excludes immediate repeated choices', async () => {
-    const fault = failSettingWrite('onboardingComplete', 'Setup write failed')
+    const fault = failSettingWrite('onboardingComplete', 'Setup write failed', 'QuotaExceededError')
     render(<App />)
     const begin = await screen.findByRole('button', { name: /Begin with three sample cards/ })
     act(() => { fireEvent.click(begin); fireEvent.click(begin) })
