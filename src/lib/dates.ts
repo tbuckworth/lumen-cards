@@ -2,14 +2,6 @@ export function startOfLocalDay(date = new Date()): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-export function isSameLocalDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
-}
-
 export function greeting(date = new Date()): string {
   const hour = date.getHours()
   if (hour < 12) return 'Good morning'

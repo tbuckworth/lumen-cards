@@ -2,7 +2,7 @@ import Papa from 'papaparse'
 import { blobDataUri, contentKey, imageBlob, imageSchema, MAX_IMPORT_BYTES, validateImage, storeImage } from './images'
 import { z } from 'zod'
 import { Rating } from 'ts-fsrs'
-import { createCard, createDeck, db, makeId, setSetting } from './db'
+import { createCard, createDeck, db, setSetting } from './db'
 import type {
   CardRecord,
   DeckRecord,
@@ -37,7 +37,7 @@ export const lumenDeckPackSchema = z.object({
   })
 })
 
-const genericClaudePackSchema = z.object({
+const compactDeckSchema = z.object({
   title: z.string().trim().min(1).optional(),
   description: z.string().optional(),
   cards: z.array(contentCardSchema).min(1)
@@ -140,7 +140,7 @@ export function parseDeckJson(raw: string): LumenDeckPack | { backup: z.infer<ty
   }
 
   checkDeckSize(raw)
-  const generic = parseSchema(genericClaudePackSchema, parsed)
+  const generic = parseSchema(compactDeckSchema, parsed)
   return {
     format: 'lumen-deck', version: 1, createdAt: new Date().toISOString(),
     deck: { title: generic.title ?? 'From Claude', description: generic.description ?? '', cards: generic.cards }
@@ -481,6 +481,3 @@ export async function shareTextFile(
   return 'downloaded'
 }
 
-export function makeReviewId(): string {
-  return makeId('review')
-}

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import type { CardImageData } from '../types'
-import { asBlob, readImageFile, storageError } from '../lib/images'
+import { asBlob, readImageFile } from '../lib/images'
+import { storageError } from '../lib/errors'
 
 export function CardImage({ image, side, thumbnail = false }: { image?: CardImageData; side: string; thumbnail?: boolean }) {
   const [resource, setResource] = useState<{ image: CardImageData; url: string }>()

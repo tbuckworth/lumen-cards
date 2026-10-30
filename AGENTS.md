@@ -2,6 +2,23 @@
 
 The instructions every coding agent in this repository follows. Codex reads this file directly; Claude Code reads it through the `@AGENTS.md` line in `CLAUDE.md`. Write rules that apply to both here, and keep Claude-only material in `CLAUDE.md`.
 
+## Repository map
+
+- `.claude/`: shared checklist configuration and Claude reviewer wiring.
+- `.codex/`: Codex hooks and reviewer wiring.
+- `.github/`: test and GitHub Pages deployment workflow.
+- `docs/`: usage guides and release notes.
+- `public/`: bundled icons and installable-app assets.
+- `src/`: application code; see `src/README.md` for the module catalogue.
+- `tests/`: unit tests and browser workflows in `tests/e2e/`.
+- Browser entry: `index.html` loads `src/main.tsx`.
+- `npm run dev`: Vite development server configured in `vite.config.ts`.
+- `npm run build`: TypeScript configurations in `tsconfig*.json` and Vite in `vite.config.ts`.
+- `npm run preview`: Vite serves the built app from `dist/`.
+- `npm test` and `npm run test:watch`: Vitest configured in `vite.config.ts`.
+- `npm run test:e2e`: Playwright configured in `playwright.config.ts`.
+- `npm run check`: verification commands composed in `package.json`.
+
 <!-- claude-tooling: codex checklist review -->
 ## Checklist review (Codex)
 
