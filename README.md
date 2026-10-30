@@ -53,12 +53,14 @@ There is no analytics, advertising, remote database, account system, or applicat
 
 ## Development
 
-Requires Node.js 20.19 or newer.
+Use Node.js 24 to match CI, with Git available.
 
 ```bash
 npm ci
 npm run dev
 ```
+
+Builds run from a Git checkout and write `dist/build-provenance.json` with the source revision, uncommitted-change status and build configuration.
 
 Run the complete local verification:
 

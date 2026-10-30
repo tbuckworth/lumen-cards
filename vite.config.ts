@@ -8,7 +8,7 @@ const base = '/lumen-cards/'
 const packageInfo = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 const buildConfigFiles = ['package.json', 'package-lock.json', 'vite.config.ts', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.node.json']
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   base,
   define: { __APP_VERSION__: JSON.stringify(packageInfo.version) },
   plugins: [
@@ -16,6 +16,8 @@ export default defineConfig(({ mode }) => ({
       name: 'build-provenance',
       apply: 'build',
       generateBundle() {
+        const config = this.environment.config
+        const { target, assetsDir, assetsInlineLimit, sourcemap, minify, manifest, ssrManifest, ssr } = config.build
         const git = (args: string[]) => execFileSync('git', args, { encoding: 'utf8' }).trim()
         const configuration = Object.fromEntries(buildConfigFiles.map((file) => [
           file, readFileSync(new URL(file, import.meta.url), 'utf8')
@@ -27,7 +29,10 @@ export default defineConfig(({ mode }) => ({
             version: packageInfo.version,
             source: { revision: git(['rev-parse', 'HEAD']), dirty: Boolean(git(['status', '--porcelain', '--untracked-files=normal'])) },
             runtime: { node: process.version },
-            build: { mode, base },
+            build: {
+              mode: config.mode, base: config.base, production: config.isProduction,
+              options: { target, assetsDir, assetsInlineLimit, sourcemap, minify, manifest, ssrManifest, ssr }
+            },
             configuration
           }, null, 2) + '\n'
         })
@@ -38,6 +43,7 @@ export default defineConfig(({ mode }) => ({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
+        // Installed identity stays fixed; start URL and scope use the resolved-base defaults.
         id: '/lumen-cards/',
         name: 'Lumen — Remember beautifully',
         short_name: 'Lumen',
@@ -46,8 +52,6 @@ export default defineConfig(({ mode }) => ({
         background_color: '#f4efe5',
         display: 'standalone',
         orientation: 'portrait-primary',
-        start_url: base,
-        scope: base,
         categories: ['education', 'productivity'],
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
@@ -71,4 +75,4 @@ export default defineConfig(({ mode }) => ({
     clearMocks: true,
     include: ['tests/*.test.ts']
   }
-}))
+})

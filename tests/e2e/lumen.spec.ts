@@ -69,7 +69,7 @@ test('has a complete installable PWA manifest', async ({ page }) => {
   expect(provenance.source.dirty).toBe(Boolean(execFileSync('git', ['status', '--porcelain', '--untracked-files=normal'], { encoding: 'utf8' }).trim()))
   expect(provenance.version).toBe(packageInfo.version)
   expect(provenance.runtime.node).toMatch(/^v\d+\.\d+\.\d+$/)
-  expect(provenance.build).toEqual({ mode: 'production', base: '/lumen-cards/' })
+  expect(provenance.build).toMatchObject({ mode: 'production', base: '/lumen-cards/', production: true })
   expect(Object.keys(provenance.configuration).sort()).toEqual([
     'package-lock.json', 'package.json', 'tsconfig.app.json', 'tsconfig.json', 'tsconfig.node.json', 'vite.config.ts'
   ])
