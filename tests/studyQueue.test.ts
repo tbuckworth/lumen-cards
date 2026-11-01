@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { Rating, State, createEmptyCard } from 'ts-fsrs'
-import type { CardRecord, ReviewRecord } from '../src/types'
+import type { CardRecord, DeckRecord, ReviewRecord } from '../src/types'
 import { scheduleReview, serializeFsrsCard } from '../src/lib/scheduler'
-import { hasNewCards, selectStudyQueue, shuffleStudyQueue } from '../src/lib/studyQueue'
+import { deckStudyCards, hasNewCards, selectDeckStudyQueue, selectStudyQueue, shuffleStudyQueue } from '../src/lib/studyQueue'
 
 const now = new Date('2026-09-03T12:00:00Z')
 
@@ -160,5 +160,36 @@ describe('study queue', () => {
     expect(hasNewCards([])).toBe(false)
     expect(hasNewCards([{ ...newCard(1), suspended: true }, scheduledCard(2, now.toISOString())])).toBe(false)
     expect(hasNewCards([newCard(1)])).toBe(true)
+  })
+})
+
+describe('deck study filters', () => {
+  const deck: DeckRecord = { id: 'deck', title: 'Materia medica', description: '', color: '#72806f', createdAt: now.toISOString(), updatedAt: now.toISOString() }
+  const tagged = (index: number, tags: string[], deckId = 'deck') => ({ ...newCard(index), tags, deckId })
+  const cards = [
+    tagged(1, ['batch-oct']), tagged(2, ['batch-nov', 'examinable']), tagged(3, ['batch-nov']),
+    tagged(4, ['y2-botany']), tagged(5, []), tagged(6, ['batch-nov'], 'other')
+  ]
+  const ids = (items: CardRecord[]) => items.map((card) => card.id)
+
+  it('admits every card of the deck when no tags are chosen, whatever the mode', () => {
+    expect(ids(deckStudyCards(deck, cards))).toEqual(['card-1', 'card-2', 'card-3', 'card-4', 'card-5'])
+    expect(ids(deckStudyCards({ ...deck, studyTags: { mode: 'except', tags: [] } }, cards))).toHaveLength(5)
+  })
+
+  it('keeps cards with any chosen tag in only mode, and cards with none of them in except mode', () => {
+    expect(ids(deckStudyCards({ ...deck, studyTags: { mode: 'only', tags: ['batch-nov'] } }, cards))).toEqual(['card-2', 'card-3'])
+    expect(ids(deckStudyCards({ ...deck, studyTags: { mode: 'only', tags: ['batch-oct', 'examinable'] } }, cards))).toEqual(['card-1', 'card-2'])
+    expect(ids(deckStudyCards({ ...deck, studyTags: { mode: 'except', tags: ['batch-nov', 'y2-botany'] } }, cards))).toEqual(['card-1', 'card-5'])
+  })
+
+  it('serves a filtered deck session from that deck’s remaining new-card allowance', () => {
+    const many = Array.from({ length: 8 }, (_, i) => tagged(10 + i, [i % 2 ? 'batch-nov' : 'batch-oct']))
+    const filtered = { ...deck, studyTags: { mode: 'only' as const, tags: ['batch-nov'] } }
+    // Three of today's five new cards were already used in this deck; another deck's reviews do not count.
+    const today = [review('deck'), review('deck'), review('deck'), review('other'), review('other')]
+    const queue = selectDeckStudyQueue(filtered, many, today, 5, now, 'due')
+    expect(ids(queue)).toEqual(['card-11', 'card-13'])
+    expect(selectDeckStudyQueue(filtered, many, today, 5, now, 'ahead')).toHaveLength(4)
   })
 })

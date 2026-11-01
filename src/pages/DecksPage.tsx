@@ -8,12 +8,12 @@ import { storageError } from '../lib/errors'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { EmptyState } from '../components/EmptyState'
 import { Modal } from '../components/Modal'
-import { db, deleteDeck } from '../lib/db'
+import { db, deleteDeck, updateStudyTags } from '../lib/db'
 import { getSetting } from '../lib/db'
 import { downloadText, makeDeckExport, makeLearningReport, safeFilename, shareTextFile, type DeckExportFormat } from '../lib/importExport'
 import { startOfLocalDay } from '../lib/dates'
-import { hasNewCards, selectStudyQueue, type StudyMode } from '../lib/studyQueue'
-import type { CardRecord, DeckRecord, Route } from '../types'
+import { deckStudyCards, hasNewCards, selectDeckStudyQueue, type StudyMode } from '../lib/studyQueue'
+import type { CardRecord, DeckRecord, Route, StudyTagFilter } from '../types'
 
 type Notice = (message: string) => void
 
@@ -47,8 +47,8 @@ export function DecksPage({
 
   if (selectedDeck) {
     const allDeckCards = data.cards.filter((card) => card.deckId === selectedDeck.id)
-    const deckReviews = data.todaysReviews.filter((review) => review.deckId === selectedDeck.id)
-    const due = selectStudyQueue(allDeckCards, deckReviews, data.dailyNewCards).length
+    const studyCards = deckStudyCards(selectedDeck, data.cards)
+    const due = selectDeckStudyQueue(selectedDeck, data.cards, data.todaysReviews, data.dailyNewCards, new Date(), 'due').length
     return (
       <div className="page">
         <header className="page-header deck-detail-header">
@@ -65,15 +65,18 @@ export function DecksPage({
           <p className="eyebrow">{selectedCards.length} {selectedCards.length === 1 ? 'card' : 'cards'}</p>
           <h1>{selectedDeck.title}</h1>
           {selectedDeck.description && <p>{selectedDeck.description}</p>}
+          {!!selectedDeck.studyTags?.tags.length && <p className="deck-hero__filter">{describeStudyTags(selectedDeck.studyTags)}</p>}
           <button className="button button--ink" type="button" disabled={!due} onClick={() => startReview(selectedDeck.id)}>
             {due ? `Study ${due} due` : 'Nothing due'}
           </button>
-          {!due && hasNewCards(allDeckCards) && (
+          {!due && hasNewCards(studyCards) && (
             <button className="text-button study-ahead" type="button" onClick={() => startReview(selectedDeck.id, 'ahead')}>
               Study ahead
             </button>
           )}
         </section>
+
+        <StudyTagsPanel key={selectedDeck.id} deck={selectedDeck} cards={allDeckCards} studyCount={studyCards.length} />
 
         <label className="search-field">
           <Search size={18} />
@@ -114,25 +117,96 @@ export function DecksPage({
     )
   }
 
+  const sections = groupDecks(data.decks)
+  const headed = sections.some(({ group }) => group !== undefined)
   return (
     <div className="page">
       <header className="page-header"><div><p className="eyebrow">Your library</p><h1>Decks</h1></div></header>
-      <div className="deck-list">
-        {data.decks.map((deck) => {
-          const cards = data.cards.filter((card) => card.deckId === deck.id)
-          const reviews = data.todaysReviews.filter((review) => review.deckId === deck.id)
-          const due = selectStudyQueue(cards, reviews, data.dailyNewCards).length
-          return (
-            <button className="deck-row" type="button" key={deck.id} onClick={() => setSelectedDeckId(deck.id)}>
-              <span className="deck-row__swatch" style={{ backgroundColor: deck.color }} />
-              <span className="deck-row__main"><strong>{deck.title}</strong><small>{cards.length} {cards.length === 1 ? 'card' : 'cards'}</small></span>
-              <span className={due ? 'due-pill' : 'due-pill due-pill--quiet'}>{due ? `${due} due` : 'Resting'}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-          )
-        })}
-      </div>
+      {sections.map(({ group, decks }) => (
+        <section className="deck-group" key={group ?? ''} aria-label={headed ? group ?? 'Other decks' : undefined}>
+          {headed && <h2 className="deck-group__title">{group ?? 'Other decks'}</h2>}
+          <div className="deck-list">
+            {decks.map((deck) => {
+              const count = data.cards.filter((card) => card.deckId === deck.id).length
+              const due = selectDeckStudyQueue(deck, data.cards, data.todaysReviews, data.dailyNewCards, new Date(), 'due').length
+              return (
+                <button className="deck-row" type="button" key={deck.id} onClick={() => setSelectedDeckId(deck.id)}>
+                  <span className="deck-row__swatch" style={{ backgroundColor: deck.color }} />
+                  <span className="deck-row__main"><strong>{deck.title}</strong><small>{count} {count === 1 ? 'card' : 'cards'}</small></span>
+                  <span className={due ? 'due-pill' : 'due-pill due-pill--quiet'}>{due ? `${due} due` : 'Resting'}</span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      ))}
     </div>
+  )
+}
+
+// One section per named group, alphabetically, then ungrouped decks. Decks keep
+// their list order within a section.
+function groupDecks(decks: DeckRecord[]): { group?: string; decks: DeckRecord[] }[] {
+  const byGroup = new Map<string | undefined, DeckRecord[]>()
+  for (const deck of decks) byGroup.set(deck.group, [...(byGroup.get(deck.group) ?? []), deck])
+  return [...byGroup.entries()]
+    .sort(([a], [b]) => a === undefined ? 1 : b === undefined ? -1 : a.localeCompare(b))
+    .map(([group, members]) => ({ group, decks: members }))
+}
+
+function describeStudyTags(filter: StudyTagFilter): string {
+  const tags = filter.tags.map((tag) => `#${tag}`).join(', ')
+  return filter.mode === 'only' ? `Studying only ${tags}` : `Studying all except ${tags}`
+}
+
+// Chooses which of the deck's tags narrow its study sessions. Today's combined
+// queue is unaffected.
+function StudyTagsPanel({ deck, cards, studyCount }: { deck: DeckRecord; cards: CardRecord[]; studyCount: number }) {
+  // No action lock: updateStudyTags composes each change with the stored filter,
+  // so a tap made while an earlier one is saving still counts.
+  const [error, setError] = useState('')
+  const save = (change: (current: StudyTagFilter) => StudyTagFilter) => {
+    setError('')
+    updateStudyTags(deck.id, change).catch((failure: unknown) => setError(storageError(failure)))
+  }
+  const filter = deck.studyTags
+  const counts = new Map<string, number>()
+  for (const card of cards) for (const tag of card.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
+  // A chosen tag stays visible after its last card loses it, so it can be cleared.
+  for (const tag of filter?.tags ?? []) if (!counts.has(tag)) counts.set(tag, 0)
+  if (!counts.size) return null
+  const tags = [...counts.keys()].sort((a, b) => a.localeCompare(b))
+  const chosen = new Set(filter?.tags ?? [])
+  const mode = filter?.mode ?? 'only'
+
+  const setMode = (next: StudyTagFilter['mode']) => save((current) => ({ ...current, mode: next }))
+  const toggle = (tag: string) => save((current) => ({
+    ...current,
+    tags: current.tags.includes(tag) ? current.tags.filter((item) => item !== tag) : [...current.tags, tag]
+  }))
+
+  return (
+    <section className="study-tags" aria-labelledby="study-tags-title">
+      <p className="eyebrow" id="study-tags-title">Study by tag</p>
+      {error && <p role="alert">{error}</p>}
+      <div className="segmented" role="group" aria-label="Tag filter mode">
+        <button type="button" className={mode === 'only' ? 'is-active' : ''} aria-pressed={mode === 'only'} onClick={() => setMode('only')}>Only these</button>
+        <button type="button" className={mode === 'except' ? 'is-active' : ''} aria-pressed={mode === 'except'} onClick={() => setMode('except')}>All except these</button>
+      </div>
+      <div className="tag-chips">
+        {tags.map((tag) => (
+          <button className="tag-chip" type="button" key={tag} aria-pressed={chosen.has(tag)} onClick={() => toggle(tag)}>
+            #{tag} <small>{counts.get(tag)}</small>
+          </button>
+        ))}
+      </div>
+      <p className="study-tags__summary">
+        {chosen.size
+          ? `This deck's sessions use ${studyCount} of ${cards.length} cards. Today still includes every card.`
+          : 'Choose tags to narrow this deck’s sessions. Today still includes every card.'}
+      </p>
+    </section>
   )
 }
 

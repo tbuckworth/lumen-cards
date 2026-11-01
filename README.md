@@ -15,7 +15,7 @@ There is no App Store purchase, developer account, login, API key, or subscripti
 ## What it does
 
 - Schedules reviews with [FSRS](https://github.com/open-spaced-repetition/ts-fsrs). See [Studying](docs/image-decks.md#studying) for daily allowances, session order and **Study ahead**.
-- Creates, edits, pauses, deletes, searches, and studies cards in separate decks.
+- Creates, edits, pauses, deletes, searches, and studies cards in separate decks, optionally listed under subject groups and studied by tag.
 - Supports image cards, portable deck imports and exports, and full backups. See the [deck guide](docs/image-decks.md).
 - Shares a learning report containing repeatedly missed cards back to Claude through the iPhone share sheet.
 - Installs as a standalone PWA and precaches the complete interface for offline use.

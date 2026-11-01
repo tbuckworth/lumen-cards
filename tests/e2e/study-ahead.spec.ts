@@ -142,7 +142,7 @@ test('Home study ahead serves remaining unseen cards across decks, survives relo
   expect(reimported.cards.map((card) => [card.id, card.fsrs, card.due, card.suspended]))
     .toEqual(saved.cards.map((card) => [card.id, card.fsrs, card.due, card.suspended]))
   await expect(page.getByLabel('New cards per day, per deck')).toHaveValue('5')
-  await expect(page.getByText('Lumen 1.3 · FSRS scheduling · made to last')).toBeVisible()
+  await expect(page.getByText('Lumen 1.4 · FSRS scheduling · made to last')).toBeVisible()
   await page.getByRole('button', { name: 'Decks', exact: true }).click()
   await page.getByRole('button', { name: /Botany/ }).click()
   await expect(page.getByRole('button', { name: 'Nothing due' })).toBeDisabled()

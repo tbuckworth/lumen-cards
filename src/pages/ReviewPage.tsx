@@ -6,7 +6,7 @@ import { Rating, State, type Grade } from 'ts-fsrs'
 import { db, getSetting, makeId } from '../lib/db'
 import { startOfLocalDay } from '../lib/dates'
 import { formatInterval, previewRatings, RATINGS, RATING_LABELS, scheduleReview, serializeFsrsCard } from '../lib/scheduler'
-import { selectStudyQueue, shuffleStudyQueue, type StudyMode } from '../lib/studyQueue'
+import { selectDeckStudyQueue, selectStudyQueue, shuffleStudyQueue, type StudyMode } from '../lib/studyQueue'
 import type { CardRecord } from '../types'
 
 interface SessionResult {
@@ -29,15 +29,19 @@ export function ReviewPage({ deckId, mode = 'due', onClose }: { deckId?: string;
 
   useEffect(() => {
     async function loadQueue() {
-      const [allCards, dailyNewCards, desiredRetention, todaysReviews] = await Promise.all([
+      const [deck, allCards, dailyNewCards, desiredRetention, todaysReviews] = await Promise.all([
+        deckId ? db.decks.get(deckId) : undefined,
         deckId ? db.cards.where('deckId').equals(deckId).toArray() : db.cards.toArray(),
         getSetting<number>('dailyNewCards'),
         getSetting<number>('desiredRetention'),
         db.reviews.where('reviewedAt').aboveOrEqual(startOfLocalDay().toISOString()).toArray()
       ])
+      if (deckId && !deck) throw new Error('This deck no longer exists.')
       setRetention(desiredRetention)
-      const reviews = deckId ? todaysReviews.filter((review) => review.deckId === deckId) : todaysReviews
-      setQueue(shuffleStudyQueue(selectStudyQueue(allCards, reviews, dailyNewCards, new Date(), mode)))
+      const now = new Date()
+      setQueue(shuffleStudyQueue(deck
+        ? selectDeckStudyQueue(deck, allCards, todaysReviews, dailyNewCards, now, mode)
+        : selectStudyQueue(allCards, todaysReviews, dailyNewCards, now, mode)))
       shownAt.current = Date.now()
     }
     void loadQueue().catch((error) => setError(storageError(error)))

@@ -542,3 +542,16 @@ h1, h2 { font-family: var(--serif); font-weight: 500; letter-spacing: -0.025em; 
 .form-error { padding: 14px; border: 1px solid #a54940; border-radius: 12px; }
 .library-card > div { min-width: 0; }
 .library-card p, .library-card span { overflow-wrap: anywhere; }
+
+.deck-group + .deck-group { margin-top: 26px; }
+.deck-group__title { margin: 0 0 11px 4px; font-size: 1.35rem; font-weight: 500; }
+.deck-hero .deck-hero__filter { margin-top: 2px; font-size: 0.82rem; }
+.study-tags { margin-bottom: 18px; padding: 17px 16px; border: 1px solid var(--line); border-radius: 20px; background: rgba(251,248,241,0.56); }
+.study-tags .eyebrow { margin-bottom: 11px; }
+.study-tags .segmented { margin-bottom: 13px; }
+.tag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-chip { min-height: 38px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); background: transparent; font-size: 0.8rem; font-weight: 650; }
+.tag-chip small { margin-left: 4px; color: var(--ink-soft); font-weight: 500; }
+.tag-chip[aria-pressed="true"] { border-color: var(--terra-dark); color: #fffaf2; background: var(--terra-dark); }
+.tag-chip[aria-pressed="true"] small { color: rgba(255,250,242,0.75); }
+.study-tags__summary { margin-top: 12px; color: var(--ink-soft); font-size: 0.78rem; line-height: 1.45; }

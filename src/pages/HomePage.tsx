@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
 import { getSetting } from '../lib/db'
 import { calculateStreak, greeting, relativeDate, startOfLocalDay } from '../lib/dates'
-import { hasNewCards, selectStudyQueue, type StudyMode } from '../lib/studyQueue'
+import { hasNewCards, selectDeckStudyQueue, selectStudyQueue, type StudyMode } from '../lib/studyQueue'
 import type { Route } from '../types'
 import { EmptyState } from '../components/EmptyState'
 
@@ -37,15 +37,11 @@ export function HomePage({
     .filter((card) => !card.suspended && new Date(card.due) > now)
     .sort((a, b) => a.due.localeCompare(b.due))[0]
 
-  const deckRows = data.decks.map((deck) => {
-    const cards = data.cards.filter((card) => card.deckId === deck.id)
-    const reviews = todaysReviews.filter((review) => review.deckId === deck.id)
-    return {
-      deck,
-      count: cards.length,
-      due: selectStudyQueue(cards, reviews, data.dailyNewCards, now).length
-    }
-  })
+  const deckRows = data.decks.map((deck) => ({
+    deck,
+    count: data.cards.filter((card) => card.deckId === deck.id).length,
+    due: selectDeckStudyQueue(deck, data.cards, todaysReviews, data.dailyNewCards, now, 'due').length
+  }))
 
   return (
     <div className="page page--home">

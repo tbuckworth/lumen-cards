@@ -3,11 +3,13 @@ import Dexie, { type EntityTable } from 'dexie'
 import { createEmptyCard } from 'ts-fsrs'
 import {
   DEFAULT_SETTINGS,
+  NO_STUDY_TAGS,
   type CardRecord,
   type CardImageData,
   type DeckRecord,
   type ReviewRecord,
-  type SettingRecord
+  type SettingRecord,
+  type StudyTagFilter
 } from '../types'
 import { serializeFsrsCard } from './scheduler'
 
@@ -113,6 +115,17 @@ export async function seedSampleDeck(): Promise<void> {
       tags: ['lumen']
     })
   ])
+}
+
+// Applies a change to the stored filter rather than to a rendered copy, so quick
+// successive taps compose. The deck's updatedAt is left alone: it orders the
+// deck list, which should not reshuffle while the filter is being chosen.
+export async function updateStudyTags(deckId: string, change: (current: StudyTagFilter) => StudyTagFilter): Promise<void> {
+  await db.transaction('rw', db.decks, async () => {
+    const deck = await db.decks.get(deckId)
+    if (!deck) throw new Error('This deck no longer exists.')
+    await db.decks.update(deckId, { studyTags: change(deck.studyTags ?? NO_STUDY_TAGS) })
+  })
 }
 
 export async function deleteDeck(deckId: string): Promise<void> {

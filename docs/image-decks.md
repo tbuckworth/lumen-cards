@@ -1,6 +1,6 @@
 # Importing and studying decks
 
-Open [Lumen](https://tbuckworth.github.io/lumen-cards/). If **Update now** appears, tap it. Check that Settings says **Lumen 1.3**. Keep your existing installation and browser data; updating preserves your cards.
+Open [Lumen](https://tbuckworth.github.io/lumen-cards/). If **Update now** appears, tap it. Check that Settings says **Lumen 1.4**. Keep your existing installation and browser data; updating preserves your cards.
 
 ## Importing
 
@@ -13,6 +13,7 @@ Use **Add → Import → Choose a deck file**. Lumen checks the whole file befor
 | Unsupported media | SVG, GIF, HEIC, audio, remote image URLs and HTML media. Convert unsupported pictures before importing. |
 | Import limits | Each image: 10 MiB and 40 million pixels. Each deck file: 100 MiB. Larger full backups can be restored through Settings, subject to device memory and storage. |
 | Anki export | UTF-8 tab-separated text for text-only decks. Use Lumen JSON to share decks containing images. |
+| Deck groups | An optional `group` beside the deck `title` in Lumen JSON lists the deck under that heading on Decks. Importing a file that names a group moves the deck into it; an empty `group` takes the deck out of its group, and a file without the field leaves the group unchanged. Cards, schedules and history are unaffected. |
 
 Tap an image to enlarge it; the enlarged view scrolls and supports browser pinch zoom. Answer images stay hidden until **Show answer**. Attach or replace images under **Add → One card**, or edit a card in Decks. Smaller images make imports and backups faster.
 
@@ -29,6 +30,7 @@ Replace the example's ellipsis with the actual base64 image bytes:
   "deck": {
     "id": "botanical-plates",
     "title": "Botanical plates",
+    "group": "Botany",
     "cards": [
       {
         "id": "botanical-plates-001",
@@ -47,11 +49,13 @@ Replace the example's ellipsis with the actual base64 image bytes:
 
 The daily allowance starts at 20 new cards per deck. Settings lets you change this allowance and the desired retention. A session shows new cards before reviews and shuffles each group. FSRS decides which reviews are due and when graded cards return.
 
+**Study by tag**, on a deck's page, narrows that deck's sessions to cards carrying any chosen tag (**Only these**) or to cards carrying none of them (**All except these**). Lumen remembers the choice for the deck, and the deck's due count, Study button and Study ahead follow it. New cards in a filtered session still come from that deck's daily allowance. **Begin** on Today always includes every card.
+
 Once nothing is due, **Study ahead** on Today or a deck lets you study remaining unseen cards. Those cards are graded and scheduled normally. Your daily allowance stays the same, and future reviews are not brought forward.
 
 ## Reimports and recovery
 
-- With IDs, only the matching card in that deck is updated; its schedule and review history stay intact. Different IDs identify different cards, even with identical prompts and images. Never reuse a card ID across decks.
+- With IDs, only the matching card in that deck is updated; its schedule and review history stay intact. Different IDs identify different cards, even with identical prompts and images. Never reuse a card ID across decks: an import that would put an existing card into another deck is refused as a whole. To change which cards you study together, tag them and use **Study by tag** rather than moving them between decks.
 - Without IDs, Lumen matches normalized front text and the contents of both images. Repeated prompts with different images remain distinct. Changing an image without preserving the card ID creates a new card. Ambiguous matches and duplicate IDs produce errors.
 - Before repairing an incomplete deck, save a full backup and regenerate the complete file from its original source. Keep the IDs to update existing cards. To retain a separate copy, give the replacement deck and its cards new IDs, then check the imported copy before deleting anything.
 
