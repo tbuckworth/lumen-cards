@@ -61,4 +61,25 @@ describe('deck organisation', () => {
     fireEvent.click(screen.getByRole('button', { name: '← Decks' }))
     expect(await screen.findByText('1 due')).toBeTruthy()
   })
+
+  it('keeps a chosen tag that no card carries any more, so the filter can still be cleared', async () => {
+    const deck = await createDeck('Materia medica')
+    const nettle = await createCard(deck.id, 'Nettle part used', 'Leaf', { tags: ['batch-nov'] })
+    await createCard(deck.id, 'Burdock part used', 'Root', { tags: ['batch-oct'] })
+    renderDecks()
+    fireEvent.click((await screen.findByText(deck.title)).closest('button')!)
+    fireEvent.click(await screen.findByRole('button', { name: /#batch-nov/ }))
+    await screen.findByRole('button', { name: 'Study 1 due' })
+
+    await db.cards.update(nettle.id, { tags: [] })
+    await screen.findByRole('button', { name: 'Nothing due' })
+    const orphan = screen.getByRole('button', { name: /#batch-nov/ })
+    expect(orphan.textContent).toBe('#batch-nov 0')
+    expect(orphan.getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(orphan)
+    await screen.findByRole('button', { name: 'Study 2 due' })
+    expect((await db.decks.get(deck.id))?.studyTags).toEqual({ mode: 'only', tags: [] })
+    expect(screen.queryByRole('button', { name: /#batch-nov/ })).toBeNull()
+  })
 })
