@@ -3,7 +3,7 @@ import { assembleContentKey, blobDataUri, contentKey, imageBlob, imageSchema, MA
 import learningReport from '../config/learning-report.json'
 import { z } from 'zod'
 import { Rating } from 'ts-fsrs'
-import { createCard, createDeck, db, setSetting } from './db'
+import { createCard, createDeck, db, requireDeck, setSetting } from './db'
 import { BACKUP_FORMAT, DECK_FORMAT, RETENTION_BOUNDS } from '../types'
 import type {
   CardRecord,
@@ -323,8 +323,7 @@ export async function restoreBackup(raw: string): Promise<ImportResult> {
 }
 
 export async function makeDeckPack(deckId: string): Promise<LumenDeckPack> {
-  const deck = await db.decks.get(deckId)
-  if (!deck) throw new Error('Deck not found.')
+  const deck = await requireDeck(deckId)
   const cards = await db.cards.where('deckId').equals(deckId).toArray()
   return {
     ...DECK_FORMAT,
@@ -389,8 +388,7 @@ const ankiColumns = [
 ]
 
 export async function makeAnkiTsv(deckId: string): Promise<string> {
-  const deck = await db.decks.get(deckId)
-  if (!deck) throw new Error('Deck not found.')
+  const deck = await requireDeck(deckId)
   const cards = await db.cards.where('deckId').equals(deckId).toArray()
   if (cards.some((card) => card.frontImage || card.backImage)) throw new Error('Anki text export cannot preserve images. Export a Lumen deck instead.')
   const header = [

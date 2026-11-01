@@ -203,7 +203,7 @@ function StudyTagsPanel({ deck, cards, studyCount }: { deck: DeckRecord; cards: 
       </div>
       <p className="study-tags__summary">
         {chosen.size
-          ? `This deck's sessions use ${studyCount} of ${cards.length} cards. Today still includes every card.`
+          ? `This deck’s sessions use ${studyCount} of ${cards.length} cards. Today still includes every card.`
           : 'Choose tags to narrow this deck’s sessions. Today still includes every card.'}
       </p>
     </section>

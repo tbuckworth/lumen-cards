@@ -198,6 +198,8 @@ describe('deck interchange', () => {
     expect(saved.studyTags).toEqual({ mode: 'except', tags: ['batch-nov', 'examinable'] })
     expect(saved.updatedAt).toBe(deck.updatedAt)
     await expect(updateStudyTags('missing', (f) => f)).rejects.toThrow('no longer exists')
+    await expect(makeDeckPack('missing')).rejects.toThrow('This deck no longer exists.')
+    await expect(makeAnkiTsv('missing')).rejects.toThrow('This deck no longer exists.')
     const backup = await makeBackup()
     await db.decks.clear()
     await restoreBackup(backup)

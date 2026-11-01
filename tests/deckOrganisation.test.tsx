@@ -46,7 +46,7 @@ describe('deck organisation', () => {
     fireEvent.click(screen.getByRole('button', { name: /#batch-nov/ }))
     await screen.findByRole('button', { name: 'Study 2 due' })
     expect(screen.getByText('Studying only #batch-nov')).toBeTruthy()
-    expect(screen.getByText("This deck's sessions use 2 of 4 cards. Today still includes every card.")).toBeTruthy()
+    expect(screen.getByText('This deck’s sessions use 2 of 4 cards. Today still includes every card.')).toBeTruthy()
     expect(screen.getByRole('button', { name: /#batch-nov/ }).getAttribute('aria-pressed')).toBe('true')
 
     fireEvent.click(screen.getByRole('button', { name: 'All except these' }))
