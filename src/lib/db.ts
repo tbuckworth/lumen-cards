@@ -117,13 +117,18 @@ export async function seedSampleDeck(): Promise<void> {
   ])
 }
 
+export async function requireDeck(deckId: string): Promise<DeckRecord> {
+  const deck = await db.decks.get(deckId)
+  if (!deck) throw new Error('This deck no longer exists.')
+  return deck
+}
+
 // Applies a change to the stored filter rather than to a rendered copy, so quick
 // successive taps compose. The deck's updatedAt is left alone: it orders the
 // deck list, which should not reshuffle while the filter is being chosen.
 export async function updateStudyTags(deckId: string, change: (current: StudyTagFilter) => StudyTagFilter): Promise<void> {
   await db.transaction('rw', db.decks, async () => {
-    const deck = await db.decks.get(deckId)
-    if (!deck) throw new Error('This deck no longer exists.')
+    const deck = await requireDeck(deckId)
     await db.decks.update(deckId, { studyTags: change(deck.studyTags ?? NO_STUDY_TAGS) })
   })
 }

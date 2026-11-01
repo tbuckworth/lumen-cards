@@ -3,7 +3,7 @@ import { storageError } from '../lib/errors'
 import { ArrowLeft, Check, RotateCcw, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Rating, State, type Grade } from 'ts-fsrs'
-import { db, getSetting, makeId } from '../lib/db'
+import { db, getSetting, makeId, requireDeck } from '../lib/db'
 import { startOfLocalDay } from '../lib/dates'
 import { formatInterval, previewRatings, RATINGS, RATING_LABELS, scheduleReview, serializeFsrsCard } from '../lib/scheduler'
 import { selectDeckStudyQueue, selectStudyQueue, shuffleStudyQueue, type StudyMode } from '../lib/studyQueue'
@@ -30,13 +30,12 @@ export function ReviewPage({ deckId, mode = 'due', onClose }: { deckId?: string;
   useEffect(() => {
     async function loadQueue() {
       const [deck, allCards, dailyNewCards, desiredRetention, todaysReviews] = await Promise.all([
-        deckId ? db.decks.get(deckId) : undefined,
+        deckId ? requireDeck(deckId) : undefined,
         deckId ? db.cards.where('deckId').equals(deckId).toArray() : db.cards.toArray(),
         getSetting<number>('dailyNewCards'),
         getSetting<number>('desiredRetention'),
         db.reviews.where('reviewedAt').aboveOrEqual(startOfLocalDay().toISOString()).toArray()
       ])
-      if (deckId && !deck) throw new Error('This deck no longer exists.')
       setRetention(desiredRetention)
       const now = new Date()
       setQueue(shuffleStudyQueue(deck

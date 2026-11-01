@@ -13,7 +13,7 @@ Use **Add → Import → Choose a deck file**. Lumen checks the whole file befor
 | Unsupported media | SVG, GIF, HEIC, audio, remote image URLs and HTML media. Convert unsupported pictures before importing. |
 | Import limits | Each image: 10 MiB and 40 million pixels. Each deck file: 100 MiB. Larger full backups can be restored through Settings, subject to device memory and storage. |
 | Anki export | UTF-8 tab-separated text for text-only decks. Use Lumen JSON to share decks containing images. |
-| Deck groups | An optional `group` beside the deck `title` in Lumen JSON lists the deck under that heading on Decks. Importing a file that names a group moves the deck into it; an empty `group` takes the deck out of its group, and a file without the field leaves the group unchanged. Cards, schedules and history are unaffected. |
+| Deck groups | An optional `group` beside the deck `title` in Lumen JSON lists the deck under that heading on Decks; headings are alphabetical, with ungrouped decks last under Other decks. Importing a file that names a group moves the deck into it; an empty `group` takes the deck out of its group, and a file without the field leaves the group unchanged. Cards, schedules and history are unaffected. |
 
 Tap an image to enlarge it; the enlarged view scrolls and supports browser pinch zoom. Answer images stay hidden until **Show answer**. Attach or replace images under **Add → One card**, or edit a card in Decks. Smaller images make imports and backups faster.
 
@@ -47,7 +47,7 @@ Replace the example's ellipsis with the actual base64 image bytes:
 
 ## Studying
 
-The daily allowance starts at 20 new cards per deck. Settings lets you change this allowance and the desired retention. A session shows new cards before reviews and shuffles each group. FSRS decides which reviews are due and when graded cards return.
+The daily allowance starts at 20 new cards per deck. Settings lets you change this allowance and the desired retention. A session shows new cards before reviews, and shuffles the new cards and the reviews separately. FSRS decides which reviews are due and when graded cards return.
 
 **Study by tag**, on a deck's page, narrows that deck's sessions to cards carrying any chosen tag (**Only these**) or to cards carrying none of them (**All except these**). Lumen remembers the choice for the deck, and the deck's due count, Study button and Study ahead follow it. New cards in a filtered session still come from that deck's daily allowance. **Begin** on Today always includes every card.
 
