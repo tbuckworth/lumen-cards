@@ -3,7 +3,7 @@ import { assembleContentKey, blobDataUri, contentKey, imageBlob, imageSchema, MA
 import learningReport from '../config/learning-report.json'
 import { z } from 'zod'
 import { Rating } from 'ts-fsrs'
-import { createCard, createDeck, db, setSetting } from './db'
+import { createCard, createDeck, db, requireDeck, setSetting } from './db'
 import { BACKUP_FORMAT, DECK_FORMAT, RETENTION_BOUNDS } from '../types'
 import type {
   CardRecord,
@@ -35,6 +35,8 @@ export const lumenDeckPackSchema = z.object({
     title: z.string().trim().min(1),
     description: z.string().optional().default(''),
     color: z.string().optional(),
+    // Present: the deck joins this group ('' leaves every group). Absent: unchanged.
+    group: z.string().trim().optional(),
     cards: z.array(contentCardSchema).min(1)
   })
 })
@@ -45,11 +47,18 @@ const compactDeckSchema = z.object({
   cards: z.array(contentCardSchema).min(1)
 })
 
+const studyTagFilterSchema = z.object({
+  mode: z.enum(['only', 'except']),
+  tags: z.array(z.string().min(1))
+})
+
 const deckRecordSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   description: z.string(),
   color: z.string(),
+  group: z.string().min(1).optional(),
+  studyTags: studyTagFilterSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string()
 })
@@ -280,6 +289,8 @@ export async function importDeckPack(input: LumenDeckPack): Promise<ImportResult
     const existing = pack.deck.id ? await db.decks.get(pack.deck.id)
       : await db.decks.filter((deck) => deck.title.toLowerCase() === pack.deck.title.toLowerCase()).first()
     const deck = existing ?? await createDeck(pack.deck.title, pack.deck.description, pack.deck.color, pack.deck.id)
+    // Dexie removes a property updated to undefined, so '' takes the deck out of its group.
+    if (pack.deck.group !== undefined) await db.decks.update(deck.id, { group: pack.deck.group || undefined })
     const result = await importPreparedCards(deck.id, prepared)
     result.decksAdded = existing ? 0 : 1
     return result
@@ -312,8 +323,7 @@ export async function restoreBackup(raw: string): Promise<ImportResult> {
 }
 
 export async function makeDeckPack(deckId: string): Promise<LumenDeckPack> {
-  const deck = await db.decks.get(deckId)
-  if (!deck) throw new Error('Deck not found.')
+  const deck = await requireDeck(deckId)
   const cards = await db.cards.where('deckId').equals(deckId).toArray()
   return {
     ...DECK_FORMAT,
@@ -323,6 +333,7 @@ export async function makeDeckPack(deckId: string): Promise<LumenDeckPack> {
       title: deck.title,
       description: deck.description,
       color: deck.color,
+      group: deck.group,
       cards: await Promise.all(cards.map(async ({ id, front, back, notes, tags, source, frontImage, backImage }) => ({
         frontImage: await blobDataUri(frontImage),
         backImage: await blobDataUri(backImage),
@@ -377,8 +388,7 @@ const ankiColumns = [
 ]
 
 export async function makeAnkiTsv(deckId: string): Promise<string> {
-  const deck = await db.decks.get(deckId)
-  if (!deck) throw new Error('Deck not found.')
+  const deck = await requireDeck(deckId)
   const cards = await db.cards.where('deckId').equals(deckId).toArray()
   if (cards.some((card) => card.frontImage || card.backImage)) throw new Error('Anki text export cannot preserve images. Export a Lumen deck instead.')
   const header = [

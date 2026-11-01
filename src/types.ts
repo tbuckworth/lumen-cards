@@ -5,11 +5,23 @@ export const BACKUP_FORMAT = { format: 'lumen-backup', version: 1 } as const
 
 export type Route = 'home' | 'decks' | 'add' | 'settings' | 'review'
 
+// A deck session shows only cards carrying one of the tags ('only'), or only
+// cards carrying none of them ('except').
+export interface StudyTagFilter {
+  mode: 'only' | 'except'
+  tags: string[]
+}
+
+export const NO_STUDY_TAGS: StudyTagFilter = { mode: 'only', tags: [] }
+
 export interface DeckRecord {
   id: string
   title: string
   description: string
   color: string
+  // Decks sharing a group are listed together on the Decks page.
+  group?: string
+  studyTags?: StudyTagFilter
   createdAt: string
   updatedAt: string
 }
@@ -85,6 +97,7 @@ export interface LumenDeckPack {
     title: string
     description?: string
     color?: string
+    group?: string
     cards: LumenContentCard[]
   }
 }

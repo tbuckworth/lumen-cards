@@ -5,6 +5,8 @@ import { File, resolveObjectURL } from 'node:buffer'
 import { URL as NodeURL } from 'node:url'
 import App from '../src/App'
 import { ErrorBoundary } from '../src/components/ErrorBoundary'
+import { DecksPage } from '../src/pages/DecksPage'
+import { ReviewPage } from '../src/pages/ReviewPage'
 import { SettingsPage } from '../src/pages/SettingsPage'
 import { createCard, createDeck, db, setSetting } from '../src/lib/db'
 import { makeBackup, shareTextFile } from '../src/lib/importExport'
@@ -16,13 +18,14 @@ function browserApi(name: string, value: unknown) {
 }
 
 // Inject only browser/IndexedDB failures: native quota, device I/O and OS dialogs cannot be forced safely in Node CI.
-function failSettingWrite(key: string, message: string, name: string) {
+function failWrite(store: string, matches: (value: { key?: string }) => boolean, message: string, name: string) {
   const original = IDBObjectStore.prototype.put
   return vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, value, ...args) {
-    if (this.name === 'settings' && value.key === key) throw new DOMException(message, name)
+    if (this.name === store && matches(value)) throw new DOMException(message, name)
     return original.call(this, value, ...args)
   })
 }
+const failSettingWrite = (key: string, message: string, name: string) => failWrite('settings', (value) => value.key === key, message, name)
 
 beforeEach(() => {
   window.location.hash = ''
@@ -338,6 +341,29 @@ describe('visible storage and action failures', () => {
     fireEvent.change(container.querySelector('.settings-row--file input')!, { target: { files: [file] } })
     await waitFor(() => expect(notify).toHaveBeenCalledWith('Restored 1 cards.'))
     expect((await db.cards.toArray())[0].back).toBe('Restored answer')
+  })
+
+  it('shows a failed tag filter save, keeps the stored filter, and still accepts the next tap', async () => {
+    const deck = await createDeck('Materia medica')
+    await createCard(deck.id, 'Nettle part used', 'Leaf', { tags: ['batch-nov'] })
+    await createCard(deck.id, 'Burdock part used', 'Root', { tags: ['batch-oct'] })
+    render(<DecksPage notify={() => {}} navigate={() => {}} startReview={() => {}} />)
+    fireEvent.click((await screen.findByText(deck.title)).closest('button')!)
+    const fault = failWrite('decks', () => true, 'Filter write interrupted', 'AbortError')
+    fireEvent.click(await screen.findByRole('button', { name: /#batch-nov/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Filter write interrupted')
+    expect((await db.decks.get(deck.id))?.studyTags).toBeUndefined()
+    expect(screen.getByRole('button', { name: 'Study 2 due' })).toBeTruthy()
+    fault.mockRestore()
+    fireEvent.click(screen.getByRole('button', { name: /#batch-nov/ }))
+    await screen.findByRole('button', { name: 'Study 1 due' })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('reports a deck session whose deck no longer exists', async () => {
+    render(<ReviewPage deckId="deleted-deck" mode="due" onClose={() => {}} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('This deck no longer exists.')
+    expect(screen.getByRole('button', { name: 'Return home' })).toBeTruthy()
   })
 
   it('renders an explicit root reload fallback for unexpected render errors', () => {

@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Rating, State, type Grade } from 'ts-fsrs'
-import { createCard, createDeck, db } from '../src/lib/db'
+import { createCard, createDeck, db, updateStudyTags } from '../src/lib/db'
 import { checkDeckSize, importContentCards, importDeckPack, makeAnkiTsv, makeBackup, makeDeckExport, makeDeckPack, makeLearningReport, parseDeckJson, parseTabularCards, restoreBackup } from '../src/lib/importExport'
 import { MAX_IMPORT_BYTES } from '../src/lib/images'
+import { scheduleReview, serializeFsrsCard } from '../src/lib/scheduler'
 import { BACKUP_FORMAT, DECK_FORMAT, RETENTION_BOUNDS } from '../src/types'
 import learningReport from '../src/config/learning-report.json'
 
@@ -168,6 +169,44 @@ describe('deck interchange', () => {
     expect(result.cardsAdded).toBe(1)
     expect((await db.decks.toArray())[0]?.title).toBe('Keep me')
     expect((await db.cards.toArray())[0]?.fsrs.due).toBeTruthy()
+  })
+
+  it('stores a deck group from an import, keeps it when a reimport omits it, and clears it on an empty group', async () => {
+    const pack = (group?: string) => ({ ...DECK_FORMAT, deck: { id: 'herbs', title: 'This month', ...(group === undefined ? {} : { group }), cards: [{ id: 'burdock-1', front: 'Burdock part used', back: 'Root' }] } })
+    await importDeckPack(pack(' Materia Medica '))
+    expect((await db.decks.get('herbs'))?.group).toBe('Materia Medica')
+    const card = (await db.cards.get('burdock-1'))!
+    const scheduled = serializeFsrsCard(scheduleReview(card, Rating.Good, new Date()).card)
+    await db.cards.update(card.id, { fsrs: scheduled, due: scheduled.due })
+    await importDeckPack(pack())
+    expect((await db.decks.get('herbs'))?.group).toBe('Materia Medica')
+    await importDeckPack(pack('Recall'))
+    expect((await db.decks.get('herbs'))?.group).toBe('Recall')
+    expect((await db.cards.get('burdock-1'))?.fsrs).toEqual(scheduled)
+    expect((await makeDeckPack('herbs')).deck.group).toBe('Recall')
+    await importDeckPack(pack(''))
+    expect(await db.decks.get('herbs')).not.toHaveProperty('group')
+    expect((await makeDeckPack('herbs')).deck.group).toBeUndefined()
+  })
+
+  it('composes successive tag filter changes and round-trips groups and filters through a backup', async () => {
+    const deck = await createDeck('Materia medica')
+    await db.decks.update(deck.id, { group: 'Herbs' })
+    await Promise.all([updateStudyTags(deck.id, (f) => ({ ...f, tags: [...f.tags, 'batch-nov'] })), updateStudyTags(deck.id, (f) => ({ ...f, tags: [...f.tags, 'examinable'] }))])
+    await updateStudyTags(deck.id, (f) => ({ ...f, mode: 'except' }))
+    const saved = (await db.decks.get(deck.id))!
+    expect(saved.studyTags).toEqual({ mode: 'except', tags: ['batch-nov', 'examinable'] })
+    expect(saved.updatedAt).toBe(deck.updatedAt)
+    await expect(updateStudyTags('missing', (f) => f)).rejects.toThrow('no longer exists')
+    await expect(makeDeckPack('missing')).rejects.toThrow('This deck no longer exists.')
+    await expect(makeAnkiTsv('missing')).rejects.toThrow('This deck no longer exists.')
+    const backup = await makeBackup()
+    await db.decks.clear()
+    await restoreBackup(backup)
+    expect(await db.decks.get(deck.id)).toEqual(saved)
+    const invalid = JSON.parse(backup)
+    invalid.decks[0].studyTags.mode = 'sometimes'
+    await expect(restoreBackup(JSON.stringify(invalid))).rejects.toThrow('studyTags')
   })
 
   it.each(['deck duplicate', 'card duplicate', 'review duplicate', 'missing deck', 'missing card', 'wrong review deck'])('rejects a backup with %s without changing any stored records', async (defect) => {

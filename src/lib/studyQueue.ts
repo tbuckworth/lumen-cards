@@ -1,5 +1,5 @@
 import { State } from 'ts-fsrs'
-import type { CardRecord, ReviewRecord } from '../types'
+import type { CardRecord, DeckRecord, ReviewRecord } from '../types'
 
 export type StudyMode = 'due' | 'ahead'
 
@@ -38,6 +38,30 @@ export function selectStudyQueue(
       return true
     })
   return [...newCards, ...dueReviews]
+}
+
+// A deck's cards that its saved tag filter admits; an empty filter admits all.
+export function deckStudyCards(deck: DeckRecord, cards: CardRecord[]): CardRecord[] {
+  const deckCards = cards.filter((card) => card.deckId === deck.id)
+  const filter = deck.studyTags
+  if (!filter?.tags.length) return deckCards
+  const tags = new Set(filter.tags)
+  const tagged = (card: CardRecord) => card.tags.some((tag) => tags.has(tag))
+  return deckCards.filter((card) => filter.mode === 'only' ? tagged(card) : !tagged(card))
+}
+
+// The queue of a session started from one deck: its filtered cards, under that
+// deck's share of today's new-card allowance.
+export function selectDeckStudyQueue(
+  deck: DeckRecord,
+  cards: CardRecord[],
+  todaysReviews: ReviewRecord[],
+  dailyNewCards: number,
+  now: Date,
+  mode: StudyMode
+): CardRecord[] {
+  const deckReviews = todaysReviews.filter((review) => review.deckId === deck.id)
+  return selectStudyQueue(deckStudyCards(deck, cards), deckReviews, dailyNewCards, now, mode)
 }
 
 // Shuffles the order a session is shown in, so neighbouring cards give no clues.
