@@ -13,7 +13,7 @@ import { getSetting } from '../lib/db'
 import { downloadText, makeDeckExport, makeLearningReport, safeFilename, shareTextFile, type DeckExportFormat } from '../lib/importExport'
 import { startOfLocalDay } from '../lib/dates'
 import { deckStudyCards, hasNewCards, selectDeckStudyQueue, type StudyMode } from '../lib/studyQueue'
-import type { CardRecord, DeckRecord, Route, StudyTagFilter } from '../types'
+import { NO_STUDY_TAGS, type CardRecord, type DeckRecord, type Route, type StudyTagFilter } from '../types'
 
 type Notice = (message: string) => void
 
@@ -170,15 +170,15 @@ function StudyTagsPanel({ deck, cards, studyCount }: { deck: DeckRecord; cards: 
     setError('')
     updateStudyTags(deck.id, change).catch((failure: unknown) => setError(storageError(failure)))
   }
-  const filter = deck.studyTags
+  const filter = deck.studyTags ?? NO_STUDY_TAGS
   const counts = new Map<string, number>()
   for (const card of cards) for (const tag of card.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
   // A chosen tag stays visible after its last card loses it, so it can be cleared.
-  for (const tag of filter?.tags ?? []) if (!counts.has(tag)) counts.set(tag, 0)
+  for (const tag of filter.tags) if (!counts.has(tag)) counts.set(tag, 0)
   if (!counts.size) return null
   const tags = [...counts.keys()].sort((a, b) => a.localeCompare(b))
-  const chosen = new Set(filter?.tags ?? [])
-  const mode = filter?.mode ?? 'only'
+  const chosen = new Set(filter.tags)
+  const { mode } = filter
 
   const setMode = (next: StudyTagFilter['mode']) => save((current) => ({ ...current, mode: next }))
   const toggle = (tag: string) => save((current) => ({
